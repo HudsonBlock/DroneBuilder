@@ -1,124 +1,71 @@
-// -------------------- Config --------------------
-const SIZES = [
-  { key: '5"', desc: 'Freestyle / Racing / Cinematic' },
-  { key: '7"', desc: 'Cinematic Long Range' },
-  { key: '3"', desc: 'Freestyle / Racing / Cinematic' },
-  { key: 'Tinywhoop (prebuilt)', desc: 'Prebuilt Freestyle / Racing' },
-  { key: 'Cinewhoop (prebuilt)', desc: 'Prebuilt Cinematic' },
-];
+/* -------------------- Small utilities -------------------- */
 
-const ALL_STYLES = ['Freestyle', 'Racing', 'Cinematic'];
-
-const VIDEO_SYSTEMS = [
-  { key: 'Analog', desc: 'Good for entry level and long range' },
-  { key: 'HDZero', desc: 'Best Low Latency HD' },
-  { key: 'DJI', desc: '4K Best Image Quality' },
-  { key: 'Other', desc: 'Walksnail, Etc.' },
-];
-
-function allowedStylesForSize(size) {
-  if (size === '7"') return ['Cinematic'];
-  if (size === 'Tinywhoop (prebuilt)') return ['Freestyle', 'Racing'];
-  if (size === 'Cinewhoop (prebuilt)') return ['Cinematic'];
-  return ALL_STYLES;
-}
-
-// -------------------- State --------------------
-const state = {
-  size: null,
-  style: null,
-  video: null,
-
-  // picks[part] = { name, price, link, weight }
-  picks: {},
-
-  // current part picking context
-  partPick: null, // { part: 'Frame' }
-};
-
-// -------------------- Custom parts storage --------------------
-const CUSTOM_KEY = 'drone_builder_custom_parts_v2';
-
-function loadCustom() {
-  try {
-    return JSON.parse(localStorage.getItem(CUSTOM_KEY) || '[]');
-  } catch {
-    return [];
-  }
-}
-
-function saveCustom(arr) {
-  localStorage.setItem(CUSTOM_KEY, JSON.stringify(arr));
-}
-
-function customMatches(c) {
-  return c.size === state.size && c.style === state.style && c.video === state.video;
-}
-
-function newId() {
-  return crypto?.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random().toString(16).slice(2);
-}
-
-function deleteCustomById(id) {
-  const arr = loadCustom();
-  saveCustom(arr.filter((x) => x.id !== id));
-}
-
-// -------------------- UI helpers --------------------
 function el(id) {
   return document.getElementById(id);
 }
 
 function money(n) {
-  const num = Number(n);
-  // Hide $0.00 everywhere
-  if (!Number.isFinite(num) || num <= 0) return '';
-  return num.toLocaleString(undefined, { style: 'currency', currency: 'USD' });
+  const v = Number(n) || 0;
+  return `$${v.toFixed(2)}`;
 }
 
-function grams(g) {
-  const n = Number(g);
-  // Hide "0 g" / invalid
-  if (!Number.isFinite(n) || n <= 0) return '';
-  return `${n} g`;
+function grams(n) {
+  const v = Number(n);
+  if (!Number.isFinite(v) || v <= 0) return '';
+  // Keep "g" on the same line
+  return `${v}${Number.isInteger(v) ? '' : ''}g`;
 }
 
-// crumbs (top right)
-function renderCrumbs() {
-  const parts = [];
-  if (state.size) parts.push(`Size: ${state.size}`);
-  if (state.style) parts.push(`Style: ${state.style}`);
-  if (state.video) parts.push(`Video: ${state.video}`);
-  const c = el('crumbs');
-  if (c) c.textContent = parts.join('  •  ');
+function newId() {
+  return Math.random().toString(36).slice(2) + Date.now().toString(36);
 }
 
-// One single show() (no duplicates)
-function show(stepId) {
-  const steps = ['step-size', 'step-style', 'step-video', 'step-part', 'step-results'];
-  for (const id of steps) {
-    const node = el(id);
-    if (!node) continue;
-    node.classList.toggle('hidden', id !== stepId);
-  }
-  renderCrumbs();
+/* -------------------- App state -------------------- */
+
+const state = {
+  // which screen is visible (step id like 'step-size')
+  step: null,
+
+  size: null,
+  style: null,
+  video: null,
+
+  // transient: currently picking options for this part
+  partPick: null,
+
+  // { [partName]: { name, price, link, weight } }
+  picks: {},
+};
+
+/* -------------------- Style/Video option logic -------------------- */
+
+const SIZES = ['65mm', '2"', '3"', '3.5"', '5"'];
+
+const STYLES = ['Freestyle', 'Racing', 'Cinematic'];
+const VIDEO_SYSTEMS = ['Analog', 'DJI', 'HDZero', 'Walksnail'];
+
+function allowedStylesForSize(size) {
+  // You can customize this however you want.
+  // For now: all sizes can use all styles.
+  return STYLES.slice();
 }
 
-function tile(title, desc, onClick) {
-  const div = document.createElement('div');
-  div.className = 'tile';
-  div.innerHTML = `<div class="title">${title}</div><div class="desc">${desc}</div>`;
-  div.addEventListener('click', onClick);
-  return div;
+function allowedVideosForSize(size) {
+  // You can customize this however you want.
+  // For now: all sizes can use all video systems.
+  return VIDEO_SYSTEMS.slice();
 }
 
-// -------------------- DB helpers --------------------
-// Supports either:
-//  A) { size:'5"', style:'Freestyle', video:'Analog', part:'Frame', options:[...] }
-//  B) { sizes:['5"'], styles:['Freestyle','Racing'], videos:['Analog','DJI'], part:'Frame', options:[...] }
+/* -------------------- DB helpers -------------------- */
+/* This expects window.PARTS_DB from data.js */
+
+/*
+Supports either:
+A) { size:'5"', style:'Freestyle', video:'Analog', part:'Frame', options:[...] }
+B) { sizes:['5"'], styles:['Freestyle','Racing'], videos:['Analog','DJI'], part:'Frame', options:[...] }
+*/
 
 function matchesOne(rule, selected) {
-  // rule can be: undefined, 'Any', string, or array
   if (rule == null) return false;
   if (rule === 'Any') return true;
   if (Array.isArray(rule)) return rule.includes(selected);
@@ -130,7 +77,11 @@ function rowMatchesState(row) {
   const stylesRule = row.styles ?? row.style;
   const videosRule = row.videos ?? row.video;
 
-  return matchesOne(sizesRule, state.size) && matchesOne(stylesRule, state.style) && matchesOne(videosRule, state.video);
+  return (
+    matchesOne(sizesRule, state.size) &&
+    matchesOne(stylesRule, state.style) &&
+    matchesOne(videosRule, state.video)
+  );
 }
 
 function rowsForCurrentSelection() {
@@ -143,13 +94,418 @@ function uniquePartsForSelection() {
   return Array.from(set);
 }
 
-// Merge DB + Custom for a part, cheapest first
+/* -------------------- Custom parts storage -------------------- */
+
+const CUSTOM_KEY = 'drone_builder_custom_parts_v1';
+
+function loadCustom() {
+  try {
+    const raw = localStorage.getItem(CUSTOM_KEY);
+    const arr = raw ? JSON.parse(raw) : [];
+    return Array.isArray(arr) ? arr : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveCustom(arr) {
+  localStorage.setItem(CUSTOM_KEY, JSON.stringify(arr));
+}
+
+function customMatches(c) {
+  // custom part must match the current selection like DB rows do
+  return (
+    matchesOne(c.size ?? c.sizes, state.size) &&
+    matchesOne(c.style ?? c.styles, state.style) &&
+    matchesOne(c.video ?? c.videos, state.video)
+  );
+}
+
+function deleteCustomById(id) {
+  const arr = loadCustom().filter((x) => x.id !== id);
+  saveCustom(arr);
+}
+
+/* -------------------- Progress + Saved builds (localStorage) -------------------- */
+// This project is static (GitHub Pages / Netlify). Without a backend, "accounts" aren't possible.
+// Instead we persist progress + saved builds locally in the user's browser via localStorage.
+
+const PROGRESS_KEY = 'drone_builder_progress_v1';
+const SAVED_BUILDS_KEY = 'drone_builder_saved_builds_v1';
+
+function safeParseJSON(str, fallback) {
+  try {
+    return JSON.parse(str);
+  } catch {
+    return fallback;
+  }
+}
+
+function persistProgress() {
+  // Only store what we need to restore the builder
+  const payload = {
+    step: state.step || null,
+    size: state.size || null,
+    style: state.style || null,
+    video: state.video || null,
+    picks: state.picks || {},
+  };
+  localStorage.setItem(PROGRESS_KEY, JSON.stringify(payload));
+}
+
+function clearProgress() {
+  localStorage.removeItem(PROGRESS_KEY);
+}
+
+function restoreProgress() {
+  const saved = safeParseJSON(localStorage.getItem(PROGRESS_KEY), null);
+  if (!saved || typeof saved !== 'object') return false;
+
+  state.step = saved.step ?? null;
+  state.size = saved.size ?? null;
+  state.style = saved.style ?? null;
+  state.video = saved.video ?? null;
+  state.picks = (saved.picks && typeof saved.picks === 'object') ? saved.picks : {};
+  return true;
+}
+
+function getSavedBuilds() {
+  const arr = safeParseJSON(localStorage.getItem(SAVED_BUILDS_KEY), []);
+  return Array.isArray(arr) ? arr : [];
+}
+
+function setSavedBuilds(arr) {
+  localStorage.setItem(SAVED_BUILDS_KEY, JSON.stringify(arr));
+}
+
+function computeTotalsFromPicks(picks) {
+  let totalPrice = 0;
+  let knownWeightSum = 0;
+  let hasAnyKnownWeight = false;
+
+  for (const part of Object.keys(picks || {})) {
+    const p = picks[part] || {};
+    totalPrice += Number(p.price) || 0;
+
+    const w = Number(p.weight);
+    if (Number.isFinite(w) && w > 0) {
+      knownWeightSum += w;
+      hasAnyKnownWeight = true;
+    }
+  }
+
+  return {
+    totalPrice,
+    totalWeight: hasAnyKnownWeight ? knownWeightSum : null, // null => unknown
+  };
+}
+
+function saveCurrentBuild() {
+  // "Save" means: take the current state selections + picks and store a snapshot.
+  if (!state.size || !state.style || !state.video) return;
+
+  const name = prompt('Name this drone build (ex: "5\\" Freestyle 6S")');
+  if (!name) return;
+
+  const totals = computeTotalsFromPicks(state.picks);
+
+  const build = {
+    id: newId(),
+    name: String(name).trim(),
+    createdAt: Date.now(),
+    size: state.size,
+    style: state.style,
+    video: state.video,
+    picks: state.picks || {},
+    totals,
+  };
+
+  const builds = getSavedBuilds();
+  builds.unshift(build); // newest first
+  setSavedBuilds(builds);
+
+  // If the modal is open, refresh it
+  renderSavedBuildsList();
+}
+
+function loadBuildById(id) {
+  const builds = getSavedBuilds();
+  const build = builds.find((b) => b.id === id);
+  if (!build) return;
+
+  state.size = build.size ?? null;
+  state.style = build.style ?? null;
+  state.video = build.video ?? null;
+  state.picks = build.picks ?? {};
+  state.partPick = null;
+
+  // Re-render everything
+  renderSize();
+  renderStyle();
+  renderVideo();
+  renderResults();
+
+  // Jump to results
+  show('step-results');
+  persistProgress();
+}
+
+function deleteBuildById(id) {
+  const builds = getSavedBuilds().filter((b) => b.id !== id);
+  setSavedBuilds(builds);
+  renderSavedBuildsList();
+}
+
+// Modal UI
+function openSavedBuilds() {
+  const modal = el('savedModal');
+  if (!modal) return;
+  modal.classList.remove('hidden');
+  renderSavedBuildsList();
+}
+
+function closeSavedBuilds() {
+  const modal = el('savedModal');
+  if (!modal) return;
+  modal.classList.add('hidden');
+}
+
+function renderSavedBuildsList() {
+  const list = el('savedList');
+  const empty = el('savedEmpty');
+  if (!list) return;
+
+  const builds = getSavedBuilds();
+  list.innerHTML = '';
+
+  if (empty) {
+    empty.style.display = builds.length ? 'none' : 'block';
+  }
+
+  for (const b of builds) {
+    const row = document.createElement('div');
+    row.className = 'savedRow';
+
+    const metaLeft = document.createElement('div');
+    metaLeft.className = 'savedMeta';
+
+    const title = document.createElement('div');
+    title.className = 'savedTitle';
+    title.textContent = b.name || 'Untitled build';
+
+    const sub = document.createElement('div');
+    sub.className = 'savedSub';
+
+    const totals = b.totals || {};
+    const priceStr = (Number(totals.totalPrice) > 0) ? money(totals.totalPrice) : '';
+    const weightStr = Number.isFinite(Number(totals.totalWeight)) ? grams(totals.totalWeight) : 'Unknown';
+
+    sub.textContent = `${b.size || ''} • ${b.style || ''} • ${b.video || ''} • ${priceStr}${priceStr ? ' • ' : ''}${weightStr}`;
+
+    metaLeft.appendChild(title);
+    metaLeft.appendChild(sub);
+
+    const actions = document.createElement('div');
+    actions.className = 'savedActions';
+
+    const loadBtn = document.createElement('button');
+    loadBtn.className = 'smallBtn';
+    loadBtn.textContent = 'Load';
+    loadBtn.addEventListener('click', () => {
+      loadBuildById(b.id);
+      closeSavedBuilds();
+    });
+
+    const delBtn = document.createElement('button');
+    delBtn.className = 'smallBtn danger';
+    delBtn.textContent = 'Delete';
+    delBtn.addEventListener('click', () => {
+      if (confirm(`Delete saved build "${b.name || 'Untitled'}"?`)) {
+        deleteBuildById(b.id);
+      }
+    });
+
+    actions.appendChild(loadBtn);
+    actions.appendChild(delBtn);
+
+    row.appendChild(metaLeft);
+    row.appendChild(actions);
+    list.appendChild(row);
+  }
+}
+
+/* -------------------- UI helpers -------------------- */
+
+function show(stepId) {
+  const steps = ['step-size', 'step-style', 'step-video', 'step-part', 'step-results'];
+  for (const id of steps) {
+    const node = el(id);
+    if (!node) continue;
+    node.classList.toggle('hidden', id !== stepId);
+  }
+
+  state.step = stepId;
+  renderCrumbs();
+  persistProgress();
+}
+
+function renderCrumbs() {
+  const crumbs = el('crumbs');
+  if (!crumbs) return;
+
+  const bits = [];
+  if (state.size) bits.push(`Size: ${state.size}`);
+  if (state.style) bits.push(`Style: ${state.style}`);
+  if (state.video) bits.push(`Video: ${state.video}`);
+
+  crumbs.textContent = bits.join(' • ');
+}
+
+/* -------------------- Step 1: Size -------------------- */
+
+function renderSize() {
+  const wrap = el('step-size');
+  if (!wrap) return;
+
+  wrap.innerHTML = `
+    <h1>Drone Builder</h1>
+    <p class="sub">Pick your size first.</p>
+    <div class="panel">
+      <h2>Size</h2>
+      <div id="sizeBtns"></div>
+    </div>
+  `;
+
+  const btnWrap = el('sizeBtns');
+  for (const s of SIZES) {
+    const b = document.createElement('button');
+    b.className = 'smallBtn';
+    b.type = 'button';
+    b.textContent = s;
+    b.addEventListener('click', () => {
+      state.size = s;
+
+      // when size changes, reset deeper choices
+      state.style = null;
+      state.video = null;
+      state.partPick = null;
+      state.picks = {};
+
+      // if only one style exists, set it automatically
+      const allowed = allowedStylesForSize(state.size);
+      if (allowed.length === 1) state.style = allowed[0];
+
+      renderStyle();
+      show('step-style');
+    });
+    btnWrap.appendChild(b);
+  }
+}
+
+function renderSizeStep() {
+  renderSize();
+}
+
+/* -------------------- Step 2: Style -------------------- */
+
+function renderStyle() {
+  const wrap = el('step-style');
+  if (!wrap) return;
+
+  const allowed = state.size ? allowedStylesForSize(state.size) : STYLES;
+
+  wrap.innerHTML = `
+    <h1>Pick Style</h1>
+    <p class="sub">Size: <strong>${state.size || ''}</strong></p>
+    <div class="panel">
+      <h2>Style</h2>
+      <div id="styleBtns"></div>
+    </div>
+    <div class="nav">
+      <button class="smallBtn" id="backStyle" type="button">Back</button>
+    </div>
+  `;
+
+  el('backStyle')?.addEventListener('click', () => show('step-size'));
+
+  const btnWrap = el('styleBtns');
+  for (const st of allowed) {
+    const b = document.createElement('button');
+    b.className = 'smallBtn';
+    b.type = 'button';
+    b.textContent = st;
+    b.addEventListener('click', () => {
+      state.style = st;
+
+      // when style changes, reset deeper choice(s)
+      state.video = null;
+      state.partPick = null;
+      state.picks = {};
+
+      renderVideo();
+      show('step-video');
+    });
+    btnWrap.appendChild(b);
+  }
+}
+
+function renderStyleStep() {
+  renderStyle();
+}
+
+/* -------------------- Step 3: Video -------------------- */
+
+function renderVideo() {
+  const wrap = el('step-video');
+  if (!wrap) return;
+
+  const allowed = state.size ? allowedVideosForSize(state.size) : VIDEO_SYSTEMS;
+
+  wrap.innerHTML = `
+    <h1>Pick Video</h1>
+    <p class="sub">Size: <strong>${state.size || ''}</strong> • Style: <strong>${state.style || ''}</strong></p>
+    <div class="panel">
+      <h2>Video System</h2>
+      <div id="videoBtns"></div>
+    </div>
+    <div class="nav">
+      <button class="smallBtn" id="backVideo" type="button">Back</button>
+    </div>
+  `;
+
+  el('backVideo')?.addEventListener('click', () => show('step-style'));
+
+  const btnWrap = el('videoBtns');
+  for (const v of allowed) {
+    const b = document.createElement('button');
+    b.className = 'smallBtn';
+    b.type = 'button';
+    b.textContent = v;
+    b.addEventListener('click', () => {
+      state.video = v;
+      state.partPick = null;
+      state.picks = {};
+
+      renderResults();
+      show('step-results');
+    });
+    btnWrap.appendChild(b);
+  }
+}
+
+function renderVideoStep() {
+  renderVideo();
+}
+
+/* -------------------- Step 3.5: Part picker -------------------- */
+/* The part picker screen shows options for a specific part, plus custom part adding. */
+
 function buildPartOptionsCombined(part) {
   const rows = rowsForCurrentSelection().filter((r) => r.part === part);
 
   const dbOptions = [];
   for (const row of rows) {
-    for (const opt of row.options || []) {
+    for (const opt of (row.options || [])) {
       dbOptions.push({
         id: null,
         name: opt.name,
@@ -187,9 +543,132 @@ function buildPartOptionsCombined(part) {
   return merged;
 }
 
-// -------------------- Results rendering --------------------
+function openPartPicker(part) {
+  state.partPick = part;
+  renderPartPickerOptions();
+  show('step-part');
+}
+
+function renderPartPickerOptions() {
+  const wrap = el('step-part');
+  if (!wrap) return;
+
+  const part = state.partPick;
+  const opts = buildPartOptionsCombined(part);
+
+  wrap.innerHTML = `
+    <h1>Pick ${part}</h1>
+    <p class="sub">Options are sorted cheapest-first. Click a card to select it.</p>
+
+    <div class="panel">
+      <h2>Options</h2>
+      <div id="optionsList" class="list"></div>
+    </div>
+
+    <div class="panel">
+      <h2>Add a custom part</h2>
+      <p class="sub">Add your own part so it shows up as an option next time.</p>
+
+      <div class="formRow">
+        <input class="input" id="customName" placeholder='Title (ex: "Quadmula Split 3")' />
+        <input class="input" id="customLink" placeholder="Link (https://...)" />
+        <input class="input" id="customPrice" placeholder="Price (ex: 79.99)" />
+      </div>
+
+      <div class="formRow2">
+        <input class="input" id="customWeight" placeholder="Weight (g, ex: 106)" />
+      </div>
+
+      <div class="nav" style="justify-content:flex-start;">
+        <button class="smallBtn" id="customAdd" type="button">Add Custom Part</button>
+        <button class="smallBtn" id="customCancel" type="button">Cancel</button>
+      </div>
+    </div>
+  `;
+
+  el('customCancel')?.addEventListener('click', () => show('step-results'));
+
+  el('customAdd')?.addEventListener('click', () => {
+    const name = (el('customName')?.value || '').trim();
+    const link = (el('customLink')?.value || '').trim();
+    const price = Number(el('customPrice')?.value || 0) || 0;
+    const weight = Number(el('customWeight')?.value || 0) || null;
+
+    if (!name) {
+      alert('Please enter a title/name.');
+      return;
+    }
+
+    const arr = loadCustom();
+    arr.unshift({
+      id: newId(),
+      part,
+      // store exact current selection for matching
+      size: state.size,
+      style: state.style,
+      video: state.video,
+
+      name,
+      link,
+      price,
+      weight,
+    });
+    saveCustom(arr);
+
+    renderPartPickerOptions();
+  });
+
+  const list = el('optionsList');
+  if (!list) return;
+
+  if (!opts.length) {
+    list.innerHTML = `<div class="sub">No options found yet. Add entries in <b>data.js</b> or add a custom part below.</div>`;
+    return;
+  }
+
+  for (const opt of opts) {
+    const div = document.createElement('div');
+    div.className = 'optionCard';
+
+    const nameHtml = opt.link
+      ? `<a class="optionLink" href="${opt.link}" target="_blank" rel="noopener">${opt.name}</a>`
+      : `<div style="font-weight:800">${opt.name}</div>`;
+
+    const weightLine = (Number(opt.weight) > 0) ? grams(opt.weight) : '';
+
+    div.innerHTML = `
+      <div>
+        ${nameHtml}
+        <div class="optionMeta">${weightLine}</div>
+      </div>
+    `;
+
+    const priceDiv = document.createElement('div');
+    priceDiv.className = 'price';
+    priceDiv.textContent = (Number(opt.price) > 0) ? money(opt.price) : '';
+    div.appendChild(priceDiv);
+
+    div.addEventListener('click', () => {
+      state.picks[part] = {
+        name: opt.name,
+        price: opt.price || 0,
+        link: opt.link || '',
+        weight: opt.weight ?? null,
+      };
+      state.partPick = null;
+      renderResults();
+      show('step-results');
+    });
+
+    list.appendChild(div);
+  }
+
+  persistProgress();
+}
+
+/* -------------------- Step 4: Results -------------------- */
+
 function renderResults() {
-  // summary pills (if present)
   const summary = el('summary');
   if (summary) {
     summary.innerHTML = `
@@ -199,26 +678,30 @@ function renderResults() {
     `;
   }
 
-  const container = el('idealList') || el('partsList');
+  const container = el('idealList');
   if (!container) return;
   container.innerHTML = '';
 
   const parts = uniquePartsForSelection();
+
+  // If nothing matches the DB, show a message but don't crash.
   if (parts.length === 0) {
     container.innerHTML = `<div class="sub">No parts found for this combo yet.</div>`;
-    const totalEl = el('idealTotal') || el('total');
+    const totalEl = el('idealTotal');
     if (totalEl) totalEl.textContent = '';
+    persistProgress();
     return;
   }
 
   let totalPrice = 0;
   let totalWeight = 0;
+  let hasKnownWeight = false;
 
   for (const part of parts) {
     const opts = buildPartOptionsCombined(part);
     if (opts.length === 0) continue;
 
-    // default pick = cheapest
+    // Default pick = cheapest (if user hasn't picked yet)
     if (!state.picks[part]) {
       const first = opts[0];
       state.picks[part] = {
@@ -232,40 +715,37 @@ function renderResults() {
     const picked = state.picks[part];
 
     totalPrice += Number(picked.price) || 0;
-    const w = Number(picked.weight);
-    if (Number.isFinite(w) && w > 0) totalWeight += w;
 
-    // Row container (3-column grid on desktop, responsive in CSS)
+    const w = Number(picked.weight);
+    if (Number.isFinite(w) && w > 0) {
+      totalWeight += w;
+      hasKnownWeight = true;
+    }
+
     const row = document.createElement('div');
     row.className = 'row';
 
-    // Left column: category name (Frame, Motors, etc.)
     const left = document.createElement('div');
     left.className = 'partName';
     left.textContent = part;
 
-    // Middle column: picked part name + weight under it
     const mid = document.createElement('div');
     mid.className = 'mid';
 
-    const nameLine = document.createElement(picked.link ? 'a' : 'div');
-    nameLine.className = picked.link ? 'pickedName optionLink' : 'pickedName';
-    nameLine.textContent = picked.name || '';
+    const weightText = (Number(picked.weight) > 0) ? grams(picked.weight) : '';
 
     if (picked.link) {
-      nameLine.href = picked.link;
-      nameLine.target = '_blank';
-      nameLine.rel = 'noopener';
+      mid.innerHTML = `
+        <a class="optionLink" href="${picked.link}" target="_blank" rel="noopener">${picked.name}</a>
+        <div class="optionMeta">${weightText}</div>
+      `;
+    } else {
+      mid.innerHTML = `
+        <div style="font-weight:800">${picked.name || 'Choose a Part:'}</div>
+        <div class="optionMeta">${weightText}</div>
+      `;
     }
 
-    const meta = document.createElement('div');
-    meta.className = 'optionMeta';
-    meta.textContent = grams(w); // grams() returns '' unless valid
-
-    mid.appendChild(nameLine);
-    mid.appendChild(meta);
-
-    // Right column: Choose button + price (kept together)
     const right = document.createElement('div');
     right.className = 'right';
 
@@ -277,7 +757,7 @@ function renderResults() {
 
     const priceDiv = document.createElement('div');
     priceDiv.className = 'price';
-    priceDiv.textContent = money(picked.price || 0); // money() returns '' unless > 0
+    priceDiv.textContent = (Number(picked.price) > 0) ? money(picked.price) : '';
 
     right.appendChild(chooseBtn);
     right.appendChild(priceDiv);
@@ -289,304 +769,123 @@ function renderResults() {
     container.appendChild(row);
   }
 
-  // Totals row
-  const totals = document.createElement('div');
-  totals.className = 'totalsRow';
-  totals.innerHTML = `
-    <div class="totalsLeft">
-      <span class="totalsLabel">Total weight:</span>
-      <span class="totalsValue">${totalWeight > 0 ? grams(totalWeight) : 'Unknown'}</span>
-    </div>
-    <div class="totalPrice">${money(totalPrice)}</div>
-  `;
-  container.appendChild(totals);
-}
-
-// -------------------- Part Picker page --------------------
-function openPartPicker(part) {
-  state.partPick = { part };
-
-  const title = el('partTitle');
-  if (title) title.textContent = `Pick ${part}`;
-
-  const sub = el('partSub');
-  if (sub) sub.textContent = `Size: ${state.size} • Style: ${state.style} • Video: ${state.video}`;
-
-  // Reset inputs
-  const cn = el('customName');
-  const cl = el('customLink');
-  const cp = el('customPrice');
-  const cw = el('customWeight');
-  if (cn) cn.value = '';
-  if (cl) cl.value = '';
-  if (cp) cp.value = '';
-  if (cw) cw.value = '';
-
-  renderPartPickerOptions();
-  show('step-part');
-}
-
-function renderPartPickerOptions() {
-  const wrap = el('partOptions');
-  if (!wrap) return;
-
-  wrap.innerHTML = '';
-
-  const part = state.partPick?.part;
-  if (!part) return;
-
-  const opts = buildPartOptionsCombined(part);
-
-  if (opts.length === 0) {
-    wrap.innerHTML = `<div class="sub">No options found yet. Add entries in <b>data.js</b> or add a custom part below.</div>`;
-    return;
-  }
-
-  for (const opt of opts) {
-    const card = document.createElement('div');
-    card.className = 'optionCard';
-
-    const nameEl = opt.link
-      ? `<a class="optionLink" data-open="1" href="${opt.link}" target="_blank" rel="noopener">${opt.name}</a>`
-      : `<div style="font-weight:800">${opt.name}</div>`;
-
-    const weightLine = grams(opt.weight);
-
-    card.innerHTML = `
-      <div class="optLeft">
-        ${nameEl}
-        <div class="optionMeta">${weightLine}</div>
-      </div>
-      <div class="optRight">
-        ${opt.source === 'custom' ? `<button class="miniDanger" data-del="1" type="button">Delete</button>` : ''}
-        <div class="price">${money(opt.price || 0)}</div>
+  // Total rows
+  const totalEl = el('idealTotal');
+  if (totalEl) {
+    const weightStr = hasKnownWeight ? `${totalWeight}g` : 'Unknown';
+    totalEl.innerHTML = `
+      <div class="total">
+        <div class="label">Total weight: <span class="value">${weightStr}</span></div>
+        <div class="price">${totalPrice > 0 ? money(totalPrice) : ''}</div>
       </div>
     `;
-
-    card.addEventListener('click', (e) => {
-      // If they clicked the link, do NOT auto-select
-      if (e.target && e.target.matches('a[data-open="1"]')) return;
-
-      // Delete custom option
-      if (e.target && e.target.matches('button[data-del="1"]')) {
-        e.preventDefault();
-        e.stopPropagation();
-
-        if (confirm(`Delete custom part "${opt.name}"?`)) {
-          deleteCustomById(opt.id);
-
-          const current = state.picks[part];
-          if (current && current.name === opt.name && (current.link || '') === (opt.link || '')) {
-            delete state.picks[part];
-          }
-
-          renderPartPickerOptions();
-          renderResults();
-        }
-        return;
-      }
-
-      // Select option
-      state.picks[part] = {
-        name: opt.name,
-        price: opt.price || 0,
-        link: opt.link || '',
-        weight: opt.weight ?? null,
-      };
-
-      renderResults();
-      show('step-results');
-    });
-
-    wrap.appendChild(card);
   }
+
+  // Save + view saved builds buttons
+  const actions = document.createElement('div');
+  actions.className = 'resultsActions';
+
+  const saveBtn = document.createElement('button');
+  saveBtn.className = 'smallBtn';
+  saveBtn.type = 'button';
+  saveBtn.textContent = 'Save Drone';
+  saveBtn.addEventListener('click', saveCurrentBuild);
+
+  const viewSavedBtn = document.createElement('button');
+  viewSavedBtn.className = 'smallBtn';
+  viewSavedBtn.type = 'button';
+  viewSavedBtn.textContent = 'Saved Drones';
+  viewSavedBtn.addEventListener('click', openSavedBuilds);
+
+  actions.appendChild(saveBtn);
+  actions.appendChild(viewSavedBtn);
+  container.appendChild(actions);
+
+  persistProgress();
 }
 
-// -------------------- Step renderers --------------------
-function renderSizeStep() {
-  const grid = el('sizeGrid');
-  if (!grid) return;
+/* -------------------- Wire up Results nav buttons -------------------- */
 
-  grid.innerHTML = '';
-  for (const s of SIZES) {
-    grid.appendChild(
-      tile(s.key, s.desc, () => {
-        state.size = s.key;
-        state.style = null;
-        state.video = null;
-        state.picks = {};
-        state.partPick = null;
+function bindResultsNav() {
+  const back = el('backResults');
+  if (back) back.addEventListener('click', () => show('step-video'));
 
-        const allowed = allowedStylesForSize(state.size);
+  const restart = el('restart');
+  if (restart) {
+    restart.addEventListener('click', () => {
+      clearProgress();
 
-        if (allowed.length === 1) {
-          state.style = allowed[0];
-          renderVideoStep();
-          show('step-video');
-        } else {
-          renderStyleStep();
-          show('step-style');
-        }
-      })
-    );
-  }
-}
-
-function renderStyleStep() {
-  const grid = el('styleGrid');
-  if (!grid) return;
-
-  grid.innerHTML = '';
-  const allowed = allowedStylesForSize(state.size);
-
-  for (const st of allowed) {
-    const desc =
-      st === 'Freestyle'
-        ? 'General ripping / tricks'
-        : st === 'Racing'
-        ? 'Fast & light'
-        : 'Smooth footage / stability';
-
-    grid.appendChild(
-      tile(st, desc, () => {
-        state.style = st;
-        state.video = null;
-        state.picks = {};
-        state.partPick = null;
-
-        renderVideoStep();
-        show('step-video');
-      })
-    );
-  }
-}
-
-function renderVideoStep() {
-  const grid = el('videoGrid');
-  if (!grid) return;
-
-  grid.innerHTML = '';
-  for (const v of VIDEO_SYSTEMS) {
-    grid.appendChild(
-      tile(v.key, v.desc, () => {
-        state.video = v.key;
-        state.picks = {};
-        state.partPick = null;
-
-        renderResults();
-        show('step-results');
-      })
-    );
-  }
-}
-
-// -------------------- Buttons --------------------
-const backToSize = el('backToSize');
-if (backToSize) {
-  backToSize.addEventListener('click', () => {
-    state.size = null;
-    state.style = null;
-    state.video = null;
-    state.picks = {};
-    state.partPick = null;
-    show('step-size');
-  });
-}
-
-const backToStyle = el('backToStyle');
-if (backToStyle) {
-  backToStyle.addEventListener('click', () => {
-    state.video = null;
-    state.picks = {};
-    state.partPick = null;
-
-    const allowed = allowedStylesForSize(state.size);
-    if (allowed.length === 1) {
       state.size = null;
       state.style = null;
+      state.video = null;
+      state.partPick = null;
+      state.picks = {};
+
+      renderSize();
+      renderStyle();
+      renderVideo();
+      renderResults();
       show('step-size');
-    } else {
-      show('step-style');
-    }
-  });
-}
-
-const backToVideo = el('backToVideo');
-if (backToVideo) {
-  backToVideo.addEventListener('click', () => {
-    state.video = null;
-    state.picks = {};
-    state.partPick = null;
-    show('step-video');
-  });
-}
-
-const restart = el('restart');
-if (restart) {
-  restart.addEventListener('click', () => {
-    state.size = null;
-    state.style = null;
-    state.video = null;
-    state.picks = {};
-    state.partPick = null;
-    show('step-size');
-  });
-}
-
-// Part Picker buttons
-const cancelPartPick = el('cancelPartPick');
-if (cancelPartPick) {
-  cancelPartPick.addEventListener('click', () => show('step-results'));
-}
-
-const addCustom = el('addCustom');
-if (addCustom) {
-  addCustom.addEventListener('click', () => {
-    const part = state.partPick?.part;
-    if (!part) return;
-
-    const name = (el('customName')?.value || '').trim();
-    const link = (el('customLink')?.value || '').trim();
-    const priceRaw = (el('customPrice')?.value || '').trim();
-    const weightRaw = (el('customWeight')?.value || '').trim();
-
-    const price = Number(priceRaw);
-    const weight = weightRaw === '' ? null : Number(weightRaw);
-
-    if (!name || !Number.isFinite(price)) {
-      alert('Please enter a Title and a valid Price (number).');
-      return;
-    }
-    if (link && !/^https?:\/\//i.test(link)) {
-      alert('Link must start with http:// or https://');
-      return;
-    }
-    if (weightRaw !== '' && !Number.isFinite(weight)) {
-      alert('Weight must be a number (grams) or left blank.');
-      return;
-    }
-
-    const custom = loadCustom();
-    custom.unshift({
-      id: newId(),
-      size: state.size,
-      style: state.style,
-      video: state.video,
-      part,
-      name,
-      link,
-      price,
-      weight,
     });
-    saveCustom(custom);
-
-    // auto-select the new custom part
-    state.picks[part] = { name, link, price, weight };
-    renderResults();
-    show('step-results');
-  });
+  }
 }
 
-// -------------------- Boot --------------------
-renderSizeStep();
-show('step-size');
+/* -------------------- Init -------------------- */
+
+document.addEventListener('DOMContentLoaded', () => {
+  // Restore in-progress build (so refresh doesn't wipe the user)
+  restoreProgress();
+
+  // If a restored size only has 1 allowed style, auto-fill it (matches the normal flow)
+  if (state.size && !state.style) {
+    const allowed = allowedStylesForSize(state.size);
+    if (allowed.length === 1) state.style = allowed[0];
+  }
+
+  // Render all screens (they read from state)
+  renderSizeStep();
+  renderStyleStep();
+  renderVideoStep();
+  renderResults();
+
+  // Wire up Results nav buttons
+  bindResultsNav();
+
+  // Hook up Saved Drones modal/button
+  const savedBtn = el('savedBtn');
+  if (savedBtn) savedBtn.addEventListener('click', openSavedBuilds);
+
+  const savedClose = el('savedClose');
+  if (savedClose) savedClose.addEventListener('click', closeSavedBuilds);
+
+  // click outside modal content closes it
+  const savedModal = el('savedModal');
+  if (savedModal) {
+    savedModal.addEventListener('click', (e) => {
+      if (e.target === savedModal) closeSavedBuilds();
+    });
+  }
+
+  // Decide which step to show after restore
+  let step = state.step;
+
+  // sanitize step based on what we actually have
+  if (!step) {
+    step = (!state.size) ? 'step-size'
+      : (!state.style) ? 'step-style'
+        : (!state.video) ? 'step-video'
+          : 'step-results';
+  } else {
+    // Don't allow jumping to later steps without prerequisites
+    if (step === 'step-style' && !state.size) step = 'step-size';
+    if (step === 'step-video' && (!state.size || !state.style)) step = (!state.size) ? 'step-size' : 'step-style';
+    if (step === 'step-part') step = 'step-results'; // part picker is transient
+    if (step === 'step-results' && (!state.size || !state.style || !state.video)) {
+      step = (!state.size) ? 'step-size'
+        : (!state.style) ? 'step-style'
+          : 'step-video';
+    }
+  }
+
+  show(step);
+});
