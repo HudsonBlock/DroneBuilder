@@ -1,0 +1,217 @@
+:root{
+  --bg:#0b1020; --card:#111a33; --muted:#a9b3d1; --text:#eef1ff;
+  --accent:#6aa6ff; --accent2:#67ffd1; --stroke:#22305f;
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial;background:linear-gradient(180deg,#0b1020,#070a14);  background-repeat: no-repeat;
+  background-attachment: fixed;
+  background-size: cover;
+color:var(--text)}
+.app{max-width:1100px;margin:0 auto;padding:18px}
+.topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.brand{font-weight:800;letter-spacing:.3px}
+.crumbs{color:var(--muted);font-size:14px}
+.card{background:var(--card);border:1px solid var(--stroke);border-radius:18px;padding:18px;box-shadow:0 20px 60px rgba(0,0,0,.35)}
+h1{margin:6px 0 4px;font-size:28px}
+h2{margin:0 0 10px;font-size:18px}
+.sub{margin:0 0 14px;color:var(--muted)}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
+.tile{border:1px solid var(--stroke);border-radius:16px;padding:14px;background:rgba(255,255,255,.02);cursor:pointer;transition:.15s}
+.tile:hover{transform:translateY(-1px);border-color:rgba(106,166,255,.7)}
+.tile .title{font-weight:700;margin-bottom:6px}
+.tile .desc{color:var(--muted);font-size:13px}
+.hidden{display:none !important;}
+.nav{display:flex;gap:10px;margin-top:14px}
+.btn{border:1px solid rgba(106,166,255,.6);background:rgba(106,166,255,.12);color:var(--text);padding:10px 12px;border-radius:12px;cursor:pointer;font-weight:650}
+.btn:hover{background:rgba(106,166,255,.18)}
+.btn.ghost{border-color:var(--stroke);background:transparent;color:var(--muted)}
+.btn.ghost:hover{background:rgba(255,255,255,.04);color:var(--text)}
+.twoCol{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px}
+@media (max-width:860px){.twoCol{grid-template-columns:1fr}}
+.panel{border:1px solid var(--stroke);border-radius:16px;padding:12px;background:rgba(255,255,255,.02)}
+.list{display:flex;flex-direction:column;gap:10px}
+.row{border:1px solid var(--stroke);border-radius:14px;padding:10px;display:grid;grid-template-columns:120px 1fr 120px;gap:10px;align-items:center}
+.partName{font-weight:700}
+.select{width:100%;padding:10px;border-radius:12px;border:1px solid var(--stroke);background:#0b1020;color:var(--text)}
+.price{justify-self:end;color:var(--accent2);font-weight:800}
+.total{margin-top:10px;color:var(--muted)}
+.summary{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px}
+.pill{border:1px solid var(--stroke);border-radius:999px;padding:6px 10px;color:var(--muted);font-size:13px}
+.footer{margin-top:12px;color:var(--muted);font-size:12px}
+a{color:var(--accent)}
+
+.totalRow {
+  margin-top: 18px;
+  border-top: 1px solid rgba(255,255,255,0.08);
+  padding-top: 12px;
+}
+
+.row {
+  grid-template-columns: 160px 1fr auto;
+}
+
+
+.totalPrice {
+  font-size: 1.6rem;
+  font-weight: 800;
+  color: #63ffd5; /* same green */
+  justify-self: end; /* IMPORTANT */
+}
+
+.formGrid{
+  display:grid;
+  grid-template-columns: 1fr 1fr 180px;
+  gap:10px;
+}
+@media (max-width:860px){
+  .formGrid{grid-template-columns:1fr}
+}
+.input{
+  width:100%;
+  padding:10px;
+  border-radius:12px;
+  border:1px solid var(--stroke);
+  background:#0b1020;
+  color:var(--text);
+}
+.optionCard{
+  border:1px solid var(--stroke);
+  border-radius:14px;
+  padding:12px;
+  cursor:pointer;
+  background:rgba(255,255,255,.02);
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+}
+.optionCard:hover{
+  border-color:rgba(106,166,255,.7);
+  transform:translateY(-1px);
+}
+.optionMeta{color:var(--muted); font-size:13px}
+.link{
+  color:var(--accent);
+  text-decoration:none;
+  font-weight:700;
+}
+.link:hover{text-decoration:underline}
+.smallBtn{
+  padding:8px 10px;
+  border-radius:12px;
+  border:1px solid var(--stroke);
+  background:transparent;
+  color:var(--muted);
+  cursor:pointer;
+}
+.smallBtn:hover{background:rgba(255,255,255,.04); color:var(--text)}
+.tinyDanger{
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid rgba(255,80,80,.35);
+  background: rgba(255,80,80,.12);
+  color: #ffb3b3;
+  cursor: pointer;
+  font-weight: 700;
+}
+.tinyDanger:hover{
+  background: rgba(255,80,80,.18);
+}
+
+/* whichever element wraps the parts list */
+.card, .panel, .section, .innerCard {
+  padding-right: 32px; /* try 24–40 */
+}
+
+
+/* --- additions for single-list layout + totals + part picker --- */
+.panel{
+  margin-top: 14px;
+  padding: 16px;
+  border: 1px solid rgba(255,255,255,.06);
+  border-radius: 16px;
+  background: rgba(255,255,255,.02);
+}
+.panelTitle{
+  font-size: 18px;
+  font-weight: 800;
+  margin-bottom: 10px;
+}
+.list{ display:flex; flex-direction:column; gap:12px; }
+
+.rowRight{
+  display:flex;
+  align-items:center;
+  gap:12px;
+}
+
+.totalsRow{
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(255,255,255,.06);
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+}
+.totalsLeft{
+  display:flex;
+  align-items:baseline;
+  gap:10px;
+  color: rgba(255,255,255,.82);
+}
+.totalsLabel{ opacity:.8; }
+.totalsValue{ font-weight: 800; }
+
+.totalPrice{
+  font-size: 28px;
+  font-weight: 900;
+  color: var(--accent);
+}
+
+/* part picker options grid */
+.optionGrid{
+  display:grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+@media (max-width: 860px){
+  .optionGrid{ grid-template-columns: 1fr; }
+}
+
+.optionRight{
+  display:flex;
+  align-items:center;
+  gap:10px;
+}
+
+.optionLink {
+  font-weight: 800;
+}
+
+.miniLink{
+  display:inline-flex;
+  align-items:center;
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,.10);
+  text-decoration:none;
+  color: rgba(255,255,255,.9);
+  font-size: 13px;
+}
+.miniLink:hover{
+  border-color: rgba(255,255,255,.22);
+}
+
+/* reuse your existing danger button style if you have it */
+.miniDanger{
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,.10);
+  background: rgba(255,80,80,.12);
+  color: rgba(255,200,200,.95);
+  font-size: 13px;
+  cursor: pointer;
+}
+.miniDanger:hover{
+  background: rgba(255,80,80,.18);
+}

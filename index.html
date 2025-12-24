@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Drone Builder Wizard</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="app">
+    <header class="topbar">
+      <div class="brand">Drone Builder</div>
+      <div class="crumbs" id="crumbs"></div>
+    </header>
+
+    <main class="card">
+      <!-- STEP 1 -->
+      <section class="step" id="step-size">
+        <h1>Choose your drone size</h1>
+        <p class="sub">Choose the platform you want to build (you can always change this later)</p>
+        <div class="grid" id="sizeGrid"></div>
+      </section>
+
+      <!-- STEP 2 -->
+      <section class="step hidden" id="step-style">
+        <h1>What’s it for?</h1>
+        <p class="sub">Styles are available based on your drone choice</p>
+        <div class="grid" id="styleGrid"></div>
+        <div class="nav">
+          <button class="btn ghost" id="backToSize">Back</button>
+        </div>
+      </section>
+
+      <!-- STEP 3 -->
+      <section class="step hidden" id="step-video">
+        <h1>Video system</h1>
+        <p class="sub">Pick the FPV system you want to build around</p>
+        <div class="grid" id="videoGrid"></div>
+        <div class="nav">
+          <button class="btn ghost" id="backToStyle">Back</button>
+        </div>
+      </section>
+
+      <!-- STEP 3.5: Part Picker -->
+      <section class="step hidden" id="step-part">
+        <h1 id="partTitle">Pick a part</h1>
+        <p class="sub" id="partSub"></p>
+
+        <div class="panel">
+          <h2>Options</h2>
+          <div id="partOptions" class="list"></div>
+        </div>
+
+        <div class="panel" style="margin-top:14px;">
+          <h2>Add a custom part</h2>
+          <p class="sub" style="margin-top:-6px;">Add your own part so it shows up as an option next time.</p>
+          <div class="formGrid">
+            <input class="input" id="customName" placeholder='Title (ex: Quadmula Split 3")' />
+            <input class="input" id="customLink" placeholder="Link (https://...)" />
+            <input class="input" id="customPrice" placeholder="Price (ex: 79.99)" />
+            <input class="input" id="customWeight" type="number" step="0.1" placeholder="Weight (g, ex: 106)" />
+          </div>
+          <div class="nav">
+            <button class="btn" id="addCustom">Add Custom Part</button>
+            <button class="btn ghost" id="cancelPartPick">Cancel</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- STEP 4 -->
+      <section class="step hidden" id="step-results">
+        <h1>Your build</h1>
+        <p class="sub">Pick parts you like</p>
+
+        <div class="summary" id="summary"></div>
+
+        <!-- Single parts list (we keep the same IDs app.js already uses) -->
+        <section class="panel">
+          <h2>Parts</h2>
+          <div id="idealList" class="list"></div>
+          
+
+        </section>
+
+        <div class="nav">
+          <button class="btn ghost" id="backToVideo">Back</button>
+          <button class="btn" id="restart">Start Over</button>
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <span>Created By @lil_huddyy33 on Instagram</span>
+    </footer>
+  </div>
+
+  <script src="data.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
