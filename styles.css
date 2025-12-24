@@ -172,7 +172,10 @@ h2 { margin: 0 0 10px; font-size: 18px; }
 
 .totalsLeft { display: flex; align-items: baseline; gap: 10px; color: rgba(255, 255, 255, 0.85); }
 .totalsLabel { opacity: 0.8; }
-.totalsValue { font-weight: 900; }
+.totalsValue {
+  font-weight: 900; 
+  white-space: nowrap;
+}
 
 .totalPrice {
   font-size: 28px;
