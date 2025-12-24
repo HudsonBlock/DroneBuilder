@@ -30,31 +30,54 @@ h2{margin:0 0 10px;font-size:18px}
 @media (max-width:860px){.twoCol{grid-template-columns:1fr}}
 .panel{border:1px solid var(--stroke);border-radius:16px;padding:12px;background:rgba(255,255,255,.02)}
 .list{display:flex;flex-direction:column;gap:10px}
-.row{border:1px solid var(--stroke);border-radius:14px;padding:10px;display:grid;grid-template-columns:120px 1fr 120px;gap:10px;align-items:center}
-/* --- Mobile fix: keep Choose + Price inside the card --- */
-@media (max-width: 520px) {
+.row{
+  border:1px solid var(--stroke);
+  border-radius:14px;
+  padding:10px;
+  align-items:center;
+  display: grid;
+  grid-template-columns: 140px minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: 14px;
+}
+.row > * { min-width: 0; }
+
+.row > :last-child{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  justify-self:end;
+}
+
+@media (max-width: 430px), (orientation: portrait) {
   .row{
-    grid-template-columns: 1fr;   /* stack */
-    gap: 10px;
+    grid-template-columns: 110px minmax(0, 1fr) auto;
+    column-gap: 10px;
   }
 
-  /* make middle content not force overflow */
-  .row > div { min-width: 0; }
-
-  /* the right-side (Choose + $) container */
-  .row .right,
-  .row > div:last-child {
-    justify-self: end;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-  }
-
-  /* price never wraps */
   .price{
     white-space: nowrap;
   }
 }
+
+/* Middle column: the picked name + weight */
+.row .picked,
+.row .mid,
+.row > :nth-child(2){
+  overflow: hidden;
+}
+
+/* Make the actual name line ellipsis */
+.row .optionLink,
+.row .pickedName,
+.row > :nth-child(2) > :first-child{
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 
 .partName{font-weight:700}
 .select{width:100%;padding:10px;border-radius:12px;border:1px solid var(--stroke);background:#0b1020;color:var(--text)}
