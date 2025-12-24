@@ -1,26 +1,25 @@
 // -------------------- Config --------------------
 const SIZES = [
-  { key:'5"', desc:'Freestyle / Racing / Cinematic' },
-  { key:'7"', desc:'Cinematic Long Range' },
-  { key:'3"', desc:'Freestyle / Racing / Cinematic' },
-  { key:'Tinywhoop (prebuilt)', desc:'Prebuilt Freestyle / Racing' },
-  { key:'Cinewhoop (prebuilt)', desc:'Prebuilt Cinematic' },
+  { key: '5"', desc: 'Freestyle / Racing / Cinematic' },
+  { key: '7"', desc: 'Cinematic Long Range' },
+  { key: '3"', desc: 'Freestyle / Racing / Cinematic' },
+  { key: 'Tinywhoop (prebuilt)', desc: 'Prebuilt Freestyle / Racing' },
+  { key: 'Cinewhoop (prebuilt)', desc: 'Prebuilt Cinematic' },
 ];
 
-const ALL_STYLES = ['Freestyle','Racing','Cinematic'];
+const ALL_STYLES = ['Freestyle', 'Racing', 'Cinematic'];
 
 const VIDEO_SYSTEMS = [
-  { key:'Analog', desc:'Good for entry level and long range' },
-  { key:'HDZero', desc:'Best Low Latency HD' },
-  { key:'DJI', desc:'4K Best Image Quality' },
-  { key:'Other', desc:'Walksnail, Etc.' },
-
+  { key: 'Analog', desc: 'Good for entry level and long range' },
+  { key: 'HDZero', desc: 'Best Low Latency HD' },
+  { key: 'DJI', desc: '4K Best Image Quality' },
+  { key: 'Other', desc: 'Walksnail, Etc.' },
 ];
 
-function allowedStylesForSize(size){
-  if(size === '7"') return ['Cinematic'];
-  if(size === 'Tinywhoop (prebuilt)') return ['Freestyle','Racing']; // no long range
-  if(size === 'Cinewhoop (prebuilt)') return ['Cinematic'];
+function allowedStylesForSize(size) {
+  if (size === '7"') return ['Cinematic'];
+  if (size === 'Tinywhoop (prebuilt)') return ['Freestyle', 'Racing'];
+  if (size === 'Cinewhoop (prebuilt)') return ['Cinematic'];
   return ALL_STYLES;
 }
 
@@ -40,61 +39,72 @@ const state = {
 // -------------------- Custom parts storage --------------------
 const CUSTOM_KEY = 'drone_builder_custom_parts_v2';
 
-function loadCustom(){
-  try { return JSON.parse(localStorage.getItem(CUSTOM_KEY) || '[]'); }
-  catch { return []; }
+function loadCustom() {
+  try {
+    return JSON.parse(localStorage.getItem(CUSTOM_KEY) || '[]');
+  } catch {
+    return [];
+  }
 }
-function saveCustom(arr){
+
+function saveCustom(arr) {
   localStorage.setItem(CUSTOM_KEY, JSON.stringify(arr));
 }
-function customMatches(c){
+
+function customMatches(c) {
   return c.size === state.size && c.style === state.style && c.video === state.video;
 }
-function newId(){
-  return (crypto?.randomUUID)
-    ? crypto.randomUUID()
-    : String(Date.now()) + Math.random().toString(16).slice(2);
+
+function newId() {
+  return crypto?.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random().toString(16).slice(2);
 }
-function deleteCustomById(id){
+
+function deleteCustomById(id) {
   const arr = loadCustom();
-  saveCustom(arr.filter(x => x.id !== id));
+  saveCustom(arr.filter((x) => x.id !== id));
 }
 
 // -------------------- UI helpers --------------------
-function el(id){ return document.getElementById(id); }
-
-function money(n){
-  const num = Number(n);
-  if(!Number.isFinite(num) || num <= 0) return ''; // hide $0.00
-  return num.toLocaleString(undefined,{style:'currency',currency:'USD'});
+function el(id) {
+  return document.getElementById(id);
 }
-function grams(g){
+
+function money(n) {
+  const num = Number(n);
+  // Hide $0.00 everywhere
+  if (!Number.isFinite(num) || num <= 0) return '';
+  return num.toLocaleString(undefined, { style: 'currency', currency: 'USD' });
+}
+
+function grams(g) {
   const n = Number(g);
-  return Number.isFinite(n) ? `${n} g` : '';
+  // Hide "0 g" / invalid
+  if (!Number.isFinite(n) || n <= 0) return '';
+  return `${n} g`;
 }
 
 // crumbs (top right)
-function renderCrumbs(){
+function renderCrumbs() {
   const parts = [];
-  if(state.size) parts.push(`Size: ${state.size}`);
-  if(state.style) parts.push(`Style: ${state.style}`);
-  if(state.video) parts.push(`Video: ${state.video}`);
+  if (state.size) parts.push(`Size: ${state.size}`);
+  if (state.style) parts.push(`Style: ${state.style}`);
+  if (state.video) parts.push(`Video: ${state.video}`);
   const c = el('crumbs');
-  if(c) c.textContent = parts.join('  •  ');
+  if (c) c.textContent = parts.join('  •  ');
 }
 
 // One single show() (no duplicates)
-function show(stepId){
-  const steps = ['step-size','step-style','step-video','step-part','step-results'];
-  for(const id of steps){
+function show(stepId) {
+  const steps = ['step-size', 'step-style', 'step-video', 'step-part', 'step-results'];
+  for (const id of steps) {
     const node = el(id);
-    if(!node) continue;
+    if (!node) continue;
     node.classList.toggle('hidden', id !== stepId);
   }
   renderCrumbs();
 }
 
-function tile(title, desc, onClick){
+function tile(title, desc, onClick) {
   const div = document.createElement('div');
   div.className = 'tile';
   div.innerHTML = `<div class="title">${title}</div><div class="desc">${desc}</div>`;
@@ -107,43 +117,39 @@ function tile(title, desc, onClick){
 //  A) { size:'5"', style:'Freestyle', video:'Analog', part:'Frame', options:[...] }
 //  B) { sizes:['5"'], styles:['Freestyle','Racing'], videos:['Analog','DJI'], part:'Frame', options:[...] }
 
-function matchesOne(rule, selected){
+function matchesOne(rule, selected) {
   // rule can be: undefined, 'Any', string, or array
-  if(rule == null) return false;
-  if(rule === 'Any') return true;
-  if(Array.isArray(rule)) return rule.includes(selected);
+  if (rule == null) return false;
+  if (rule === 'Any') return true;
+  if (Array.isArray(rule)) return rule.includes(selected);
   return rule === selected;
 }
 
-function rowMatchesState(row){
-  const sizesRule  = row.sizes  ?? row.size;
+function rowMatchesState(row) {
+  const sizesRule = row.sizes ?? row.size;
   const stylesRule = row.styles ?? row.style;
   const videosRule = row.videos ?? row.video;
 
-  return (
-    matchesOne(sizesRule, state.size) &&
-    matchesOne(stylesRule, state.style) &&
-    matchesOne(videosRule, state.video)
-  );
+  return matchesOne(sizesRule, state.size) && matchesOne(stylesRule, state.style) && matchesOne(videosRule, state.video);
 }
 
-function rowsForCurrentSelection(){
+function rowsForCurrentSelection() {
   return (window.PARTS_DB || []).filter(rowMatchesState);
 }
 
-function uniquePartsForSelection(){
+function uniquePartsForSelection() {
   const rows = rowsForCurrentSelection();
-  const set = new Set(rows.map(r => r.part));
+  const set = new Set(rows.map((r) => r.part));
   return Array.from(set);
 }
 
 // Merge DB + Custom for a part, cheapest first
-function buildPartOptionsCombined(part){
-  const rows = rowsForCurrentSelection().filter(r => r.part === part);
+function buildPartOptionsCombined(part) {
+  const rows = rowsForCurrentSelection().filter((r) => r.part === part);
 
   const dbOptions = [];
-  for(const row of rows){
-    for(const opt of (row.options || [])){
+  for (const row of rows) {
+    for (const opt of row.options || []) {
       dbOptions.push({
         id: null,
         name: opt.name,
@@ -156,8 +162,8 @@ function buildPartOptionsCombined(part){
   }
 
   const customOptions = loadCustom()
-    .filter(c => customMatches(c) && c.part === part)
-    .map(c => ({
+    .filter((c) => customMatches(c) && c.part === part)
+    .map((c) => ({
       id: c.id,
       name: c.name,
       price: c.price ?? 0,
@@ -169,23 +175,23 @@ function buildPartOptionsCombined(part){
   // custom first so it "wins" on duplicates by name
   const seen = new Set();
   const merged = [];
-  for(const opt of [...customOptions, ...dbOptions]){
+  for (const opt of [...customOptions, ...dbOptions]) {
     const key = String(opt.name || '').trim().toLowerCase();
-    if(!key) continue;
-    if(seen.has(key)) continue;
+    if (!key) continue;
+    if (seen.has(key)) continue;
     seen.add(key);
     merged.push(opt);
   }
 
-  merged.sort((a,b) => (Number(a.price)||0) - (Number(b.price)||0));
+  merged.sort((a, b) => (Number(a.price) || 0) - (Number(b.price) || 0));
   return merged;
 }
 
 // -------------------- Results rendering --------------------
-function renderResults(){
+function renderResults() {
   // summary pills (if present)
   const summary = el('summary');
-  if(summary){
+  if (summary) {
     summary.innerHTML = `
       <span class="pill"><strong>Size</strong>: ${state.size ?? ''}</span>
       <span class="pill"><strong>Style</strong>: ${state.style ?? ''}</span>
@@ -194,86 +200,84 @@ function renderResults(){
   }
 
   const container = el('idealList') || el('partsList');
-  if(!container) return;
+  if (!container) return;
   container.innerHTML = '';
 
   const parts = uniquePartsForSelection();
-  if(parts.length === 0){
+  if (parts.length === 0) {
     container.innerHTML = `<div class="sub">No parts found for this combo yet.</div>`;
     const totalEl = el('idealTotal') || el('total');
-    if(totalEl) totalEl.textContent = '';
+    if (totalEl) totalEl.textContent = '';
     return;
   }
 
   let totalPrice = 0;
   let totalWeight = 0;
 
-  for(const part of parts){
+  for (const part of parts) {
     const opts = buildPartOptionsCombined(part);
-    if(opts.length === 0) continue;
+    if (opts.length === 0) continue;
 
     // default pick = cheapest
-    if(!state.picks[part]){
+    if (!state.picks[part]) {
       const first = opts[0];
       state.picks[part] = {
         name: first.name,
         price: first.price || 0,
         link: first.link || '',
-        weight: first.weight ?? null
+        weight: first.weight ?? null,
       };
     }
 
     const picked = state.picks[part];
 
     totalPrice += Number(picked.price) || 0;
-    if (Number.isFinite(Number(picked.weight)) && picked.weight > 0) {
-      totalWeight += Number(picked.weight);
-    }
+    const w = Number(picked.weight);
+    if (Number.isFinite(w) && w > 0) totalWeight += w;
+
+    // Row container (3-column grid on desktop, responsive in CSS)
     const row = document.createElement('div');
     row.className = 'row';
 
+    // Left column: category name (Frame, Motors, etc.)
     const left = document.createElement('div');
     left.className = 'partName';
     left.textContent = part;
 
+    // Middle column: picked part name + weight under it
     const mid = document.createElement('div');
-    const w = Number(picked.weight);
-    const weightText = (Number.isFinite(w) && w > 0) ? grams(w) : '';
+    mid.className = 'mid';
 
     const nameLine = document.createElement(picked.link ? 'a' : 'div');
+    nameLine.className = picked.link ? 'pickedName optionLink' : 'pickedName';
+    nameLine.textContent = picked.name || '';
 
     if (picked.link) {
       nameLine.href = picked.link;
       nameLine.target = '_blank';
       nameLine.rel = 'noopener';
-      nameLine.className = 'optionLink';
     }
-
-    nameLine.textContent = picked.name;
-    nameLine.style.fontWeight = '700';
-    nameLine.classList.add('pickedName');
-
 
     const meta = document.createElement('div');
     meta.className = 'optionMeta';
-    meta.textContent = weightText;
+    meta.textContent = grams(w); // grams() returns '' unless valid
 
     mid.appendChild(nameLine);
     mid.appendChild(meta);
 
+    // Right column: Choose button + price (kept together)
     const right = document.createElement('div');
-    right.style.display = 'flex';
-    right.style.alignItems = 'center';
-    right.style.gap = '10px';
+    right.className = 'right';
 
     const chooseBtn = document.createElement('button');
     chooseBtn.className = 'smallBtn';
+    chooseBtn.type = 'button';
     chooseBtn.textContent = 'Choose';
     chooseBtn.addEventListener('click', () => openPartPicker(part));
 
     const priceDiv = document.createElement('div');
     priceDiv.className = 'price';
-    priceDiv.textContent = money(picked.price || 0);
+    priceDiv.textContent = money(picked.price || 0); // money() returns '' unless > 0
 
     right.appendChild(chooseBtn);
     right.appendChild(priceDiv);
@@ -285,90 +289,94 @@ function renderResults(){
     container.appendChild(row);
   }
 
-  // Footer totals row INSIDE the card so it looks nice + right-aligned price in price color
-  const footer = document.createElement('div');
-  footer.style.marginTop = '14px';
-  footer.style.display = 'flex';
-  footer.style.justifyContent = 'space-between';
-  footer.style.alignItems = 'baseline';
-  footer.innerHTML = `
-    <div class="sub">Total weight: <b>${totalWeight ? grams(totalWeight) : 'Unknown'}</b></div>
-    <div class="price" style="font-size:20px; font-weight:800;">${money(totalPrice)}</div>
+  // Totals row
+  const totals = document.createElement('div');
+  totals.className = 'totalsRow';
+  totals.innerHTML = `
+    <div class="totalsLeft">
+      <span class="totalsLabel">Total weight:</span>
+      <span class="totalsValue">${totalWeight > 0 ? grams(totalWeight) : 'Unknown'}</span>
+    </div>
+    <div class="totalPrice">${money(totalPrice)}</div>
   `;
-  container.appendChild(footer);
-
+  container.appendChild(totals);
 }
 
 // -------------------- Part Picker page --------------------
-function openPartPicker(part){
+function openPartPicker(part) {
   state.partPick = { part };
 
-
-
   const title = el('partTitle');
-  if(title) title.textContent = `Pick ${part}`;
+  if (title) title.textContent = `Pick ${part}`;
 
   const sub = el('partSub');
-  if(sub) sub.textContent = `Size: ${state.size} • Style: ${state.style} • Video: ${state.video}`;
+  if (sub) sub.textContent = `Size: ${state.size} • Style: ${state.style} • Video: ${state.video}`;
 
-  const cn = el('customName'); if(cn) cn.value = '';
-  const cl = el('customLink'); if(cl) cl.value = '';
-  const cp = el('customPrice'); if(cp) cp.value = '';
-  const cw = el('customWeight'); if(cw) cw.value = '';
+  // Reset inputs
+  const cn = el('customName');
+  const cl = el('customLink');
+  const cp = el('customPrice');
+  const cw = el('customWeight');
+  if (cn) cn.value = '';
+  if (cl) cl.value = '';
+  if (cp) cp.value = '';
+  if (cw) cw.value = '';
 
   renderPartPickerOptions();
   show('step-part');
 }
 
-function renderPartPickerOptions(){
+function renderPartPickerOptions() {
   const wrap = el('partOptions');
-  if(!wrap) return;
+  if (!wrap) return;
 
   wrap.innerHTML = '';
 
   const part = state.partPick?.part;
-  if(!part) return;
+  if (!part) return;
 
   const opts = buildPartOptionsCombined(part);
 
-  if(opts.length === 0){
+  if (opts.length === 0) {
     wrap.innerHTML = `<div class="sub">No options found yet. Add entries in <b>data.js</b> or add a custom part below.</div>`;
     return;
   }
 
-  for(const opt of opts){
-    const div = document.createElement('div');
-    div.className = 'optionCard';
+  for (const opt of opts) {
+    const card = document.createElement('div');
+    card.className = 'optionCard';
 
-    const weightText = Number.isFinite(Number(opt.weight)) ? grams(opt.weight) : 'Weight unknown';
-    const hasLink = !!opt.link;
-
-    const nameHtml = opt.link
-      ? `<a class="optionLink" href="${opt.link}" target="_blank" rel="noopener">${opt.name}</a>`
+    const nameEl = opt.link
+      ? `<a class="optionLink" data-open="1" href="${opt.link}" target="_blank" rel="noopener">${opt.name}</a>`
       : `<div style="font-weight:800">${opt.name}</div>`;
 
-    div.innerHTML = `
-      <div>
-        ${nameHtml}
-        <div class="optionMeta">${opt.weight ? grams(opt.weight) : ''}</div>
+    const weightLine = grams(opt.weight);
+
+    card.innerHTML = `
+      <div class="optLeft">
+        ${nameEl}
+        <div class="optionMeta">${weightLine}</div>
       </div>
-      <div class="price">${money(opt.price || 0)}</div>
+      <div class="optRight">
+        ${opt.source === 'custom' ? `<button class="miniDanger" data-del="1" type="button">Delete</button>` : ''}
+        <div class="price">${money(opt.price || 0)}</div>
+      </div>
     `;
 
-    div.addEventListener('click', (e) => {
-      // If they clicked the Open link, do NOT auto-select
-      if(e.target && e.target.matches('a[data-open="1"]')) return;
+    card.addEventListener('click', (e) => {
+      // If they clicked the link, do NOT auto-select
+      if (e.target && e.target.matches('a[data-open="1"]')) return;
 
       // Delete custom option
-      if(e.target && e.target.matches('button[data-del="1"]')){
+      if (e.target && e.target.matches('button[data-del="1"]')) {
         e.preventDefault();
         e.stopPropagation();
 
-        if(confirm(`Delete custom part "${opt.name}"?`)){
+        if (confirm(`Delete custom part "${opt.name}"?`)) {
           deleteCustomById(opt.id);
 
           const current = state.picks[part];
-          if(current && current.name === opt.name && (current.link || '') === (opt.link || '')){
+          if (current && current.name === opt.name && (current.link || '') === (opt.link || '')) {
             delete state.picks[part];
           }
 
@@ -383,90 +391,98 @@ function renderPartPickerOptions(){
         name: opt.name,
         price: opt.price || 0,
         link: opt.link || '',
-        weight: opt.weight ?? null
+        weight: opt.weight ?? null,
       };
+
       renderResults();
       show('step-results');
     });
 
-    wrap.appendChild(div);
+    wrap.appendChild(card);
   }
 }
 
 // -------------------- Step renderers --------------------
-function renderSizeStep(){
+function renderSizeStep() {
   const grid = el('sizeGrid');
-  if(!grid) return;
+  if (!grid) return;
 
   grid.innerHTML = '';
-  for(const s of SIZES){
-    grid.appendChild(tile(s.key, s.desc, () => {
-      state.size = s.key;
-      state.style = null;
-      state.video = null;
-      state.picks = {};
-      state.partPick = null;
+  for (const s of SIZES) {
+    grid.appendChild(
+      tile(s.key, s.desc, () => {
+        state.size = s.key;
+        state.style = null;
+        state.video = null;
+        state.picks = {};
+        state.partPick = null;
 
-      const allowed = allowedStylesForSize(state.size);
+        const allowed = allowedStylesForSize(state.size);
 
-      if(allowed.length === 1){
-        state.style = allowed[0];
-        renderVideoStep();
-        show('step-video');
-      } else {
-        renderStyleStep();
-        show('step-style');
-      }
-    }));
+        if (allowed.length === 1) {
+          state.style = allowed[0];
+          renderVideoStep();
+          show('step-video');
+        } else {
+          renderStyleStep();
+          show('step-style');
+        }
+      })
+    );
   }
 }
 
-function renderStyleStep(){
+function renderStyleStep() {
   const grid = el('styleGrid');
-  if(!grid) return;
+  if (!grid) return;
 
   grid.innerHTML = '';
   const allowed = allowedStylesForSize(state.size);
 
-  for(const st of allowed){
+  for (const st of allowed) {
     const desc =
-      (st === 'Freestyle') ? 'General ripping / tricks' :
-      (st === 'Racing') ? 'Fast & light' :
-      (st === 'Long Range') ? 'Efficiency / distance' :
-      'Smooth footage / stability';
+      st === 'Freestyle'
+        ? 'General ripping / tricks'
+        : st === 'Racing'
+        ? 'Fast & light'
+        : 'Smooth footage / stability';
 
-    grid.appendChild(tile(st, desc, () => {
-      state.style = st;
-      state.video = null;
-      state.picks = {};
-      state.partPick = null;
+    grid.appendChild(
+      tile(st, desc, () => {
+        state.style = st;
+        state.video = null;
+        state.picks = {};
+        state.partPick = null;
 
-      renderVideoStep();
-      show('step-video');
-    }));
+        renderVideoStep();
+        show('step-video');
+      })
+    );
   }
 }
 
-function renderVideoStep(){
+function renderVideoStep() {
   const grid = el('videoGrid');
-  if(!grid) return;
+  if (!grid) return;
 
   grid.innerHTML = '';
-  for(const v of VIDEO_SYSTEMS){
-    grid.appendChild(tile(v.key, v.desc, () => {
-      state.video = v.key;
-      state.picks = {};
-      state.partPick = null;
+  for (const v of VIDEO_SYSTEMS) {
+    grid.appendChild(
+      tile(v.key, v.desc, () => {
+        state.video = v.key;
+        state.picks = {};
+        state.partPick = null;
 
-      renderResults();
-      show('step-results');
-    }));
+        renderResults();
+        show('step-results');
+      })
+    );
   }
 }
 
 // -------------------- Buttons --------------------
 const backToSize = el('backToSize');
-if(backToSize){
+if (backToSize) {
   backToSize.addEventListener('click', () => {
     state.size = null;
     state.style = null;
@@ -478,15 +494,14 @@ if(backToSize){
 }
 
 const backToStyle = el('backToStyle');
-if(backToStyle){
+if (backToStyle) {
   backToStyle.addEventListener('click', () => {
-    // from video -> style (or size if style was auto-skipped)
     state.video = null;
     state.picks = {};
     state.partPick = null;
 
     const allowed = allowedStylesForSize(state.size);
-    if(allowed.length === 1){
+    if (allowed.length === 1) {
       state.size = null;
       state.style = null;
       show('step-size');
@@ -497,9 +512,8 @@ if(backToStyle){
 }
 
 const backToVideo = el('backToVideo');
-if(backToVideo){
+if (backToVideo) {
   backToVideo.addEventListener('click', () => {
-    // from results -> video
     state.video = null;
     state.picks = {};
     state.partPick = null;
@@ -508,7 +522,7 @@ if(backToVideo){
 }
 
 const restart = el('restart');
-if(restart){
+if (restart) {
   restart.addEventListener('click', () => {
     state.size = null;
     state.style = null;
@@ -521,15 +535,15 @@ if(restart){
 
 // Part Picker buttons
 const cancelPartPick = el('cancelPartPick');
-if(cancelPartPick){
+if (cancelPartPick) {
   cancelPartPick.addEventListener('click', () => show('step-results'));
 }
 
 const addCustom = el('addCustom');
-if(addCustom){
+if (addCustom) {
   addCustom.addEventListener('click', () => {
     const part = state.partPick?.part;
-    if(!part) return;
+    if (!part) return;
 
     const name = (el('customName')?.value || '').trim();
     const link = (el('customLink')?.value || '').trim();
@@ -537,17 +551,17 @@ if(addCustom){
     const weightRaw = (el('customWeight')?.value || '').trim();
 
     const price = Number(priceRaw);
-    const weight = (weightRaw === '') ? null : Number(weightRaw);
+    const weight = weightRaw === '' ? null : Number(weightRaw);
 
-    if(!name || !Number.isFinite(price)){
+    if (!name || !Number.isFinite(price)) {
       alert('Please enter a Title and a valid Price (number).');
       return;
     }
-    if(link && !/^https?:\/\//i.test(link)){
+    if (link && !/^https?:\/\//i.test(link)) {
       alert('Link must start with http:// or https://');
       return;
     }
-    if(weightRaw !== '' && !Number.isFinite(weight)){
+    if (weightRaw !== '' && !Number.isFinite(weight)) {
       alert('Weight must be a number (grams) or left blank.');
       return;
     }
@@ -562,11 +576,11 @@ if(addCustom){
       name,
       link,
       price,
-      weight
+      weight,
     });
     saveCustom(custom);
 
-    // auto-select
+    // auto-select the new custom part
     state.picks[part] = { name, link, price, weight };
     renderResults();
     show('step-results');
@@ -576,4 +590,3 @@ if(addCustom){
 // -------------------- Boot --------------------
 renderSizeStep();
 show('step-size');
-
