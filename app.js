@@ -80,7 +80,7 @@ function grams(g) {
   const n = Number(g);
   // Hide "0 g" / invalid
   if (!Number.isFinite(n) || n <= 0) return '';
-  return `${n}g`;
+  return `${n} g`;
 }
 
 // crumbs (top right)
@@ -590,4 +590,3 @@ if (addCustom) {
 // -------------------- Boot --------------------
 renderSizeStep();
 show('step-size');
-
