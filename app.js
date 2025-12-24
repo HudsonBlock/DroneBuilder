@@ -251,6 +251,8 @@ function renderResults(){
 
     nameLine.textContent = picked.name;
     nameLine.style.fontWeight = '700';
+    nameLine.classList.add('pickedName');
+
 
     const meta = document.createElement('div');
     meta.className = 'optionMeta';
@@ -574,3 +576,4 @@ if(addCustom){
 // -------------------- Boot --------------------
 renderSizeStep();
 show('step-size');
+
