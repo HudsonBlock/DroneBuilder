@@ -1,16 +1,16 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Drone Builder Wizard</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Drone Builder</title>
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
   <div class="app">
     <header class="topbar">
-      <div class="brand">Drone Builder</div>
-      <div class="crumbs" id="crumbs"></div>
+      <div class="brand">Drone<br/>Builder</div>
+      <div class="topInfo" id="topInfo"></div>
     </header>
 
     <main class="card">
@@ -19,51 +19,30 @@
         <h1>Choose your drone size</h1>
         <p class="sub">Choose the platform you want to build (you can always change this later)</p>
         <div class="grid" id="sizeGrid"></div>
+
+        <!-- Saved Drones button at bottom of first page -->
+        <div class="bottomActions">
+          <button class="btn ghost" id="openSavedBtn" type="button">Saved Drones</button>
+        </div>
       </section>
 
       <!-- STEP 2 -->
       <section class="step hidden" id="step-style">
-        <h1>What’s it for?</h1>
-        <p class="sub">Styles are available based on your drone choice</p>
+        <h1>Choose your style</h1>
+        <p class="sub">Pick the type of build you want.</p>
         <div class="grid" id="styleGrid"></div>
         <div class="nav">
-          <button class="btn ghost" id="backToSize">Back</button>
+          <button class="btn ghost" id="backToSize" type="button">Back</button>
         </div>
       </section>
 
       <!-- STEP 3 -->
       <section class="step hidden" id="step-video">
-        <h1>Video system</h1>
-        <p class="sub">Pick the FPV system you want to build around</p>
+        <h1>Choose your video system</h1>
+        <p class="sub">Pick your FPV video system.</p>
         <div class="grid" id="videoGrid"></div>
         <div class="nav">
-          <button class="btn ghost" id="backToStyle">Back</button>
-        </div>
-      </section>
-
-      <!-- STEP 3.5: Part Picker -->
-      <section class="step hidden" id="step-part">
-        <h1 id="partTitle">Pick a part</h1>
-        <p class="sub" id="partSub"></p>
-
-        <div class="panel">
-          <h2>Options</h2>
-          <div id="partOptions" class="list"></div>
-        </div>
-
-        <div class="panel" style="margin-top:14px;">
-          <h2>Add a custom part</h2>
-          <p class="sub" style="margin-top:-6px;">Add your own part so it shows up as an option next time.</p>
-          <div class="formGrid">
-            <input class="input" id="customName" placeholder='Title (ex: Quadmula Split 3")' />
-            <input class="input" id="customLink" placeholder="Link (https://...)" />
-            <input class="input" id="customPrice" placeholder="Price (ex: 79.99)" />
-            <input class="input" id="customWeight" type="number" step="0.1" placeholder="Weight (g, ex: 106)" />
-          </div>
-          <div class="nav">
-            <button class="btn" id="addCustom">Add Custom Part</button>
-            <button class="btn ghost" id="cancelPartPick">Cancel</button>
-          </div>
+          <button class="btn ghost" id="backToStyle" type="button">Back</button>
         </div>
       </section>
 
@@ -74,24 +53,94 @@
 
         <div class="summary" id="summary"></div>
 
-        <!-- Single parts list (we keep the same IDs app.js already uses) -->
+        <!-- ONE list only (no Ideal/Budget split) -->
         <section class="panel">
           <h2>Parts</h2>
-          <div id="idealList" class="list"></div>
-          
+          <div id="partsList" class="list"></div>
 
+          <!-- Totals row + Save Drone button -->
+          <div class="totalsRow">
+            <div class="totalsLeft">
+              <div class="total">Total weight: <strong id="totalWeight">Unknown</strong></div>
+            </div>
+
+            <div class="totalsRight">
+              <div class="totalPrice" id="totalPrice"></div>
+              <button class="btn ghost" id="saveDroneBtn" type="button">Save Drone</button>
+            </div>
+          </div>
         </section>
 
         <div class="nav">
-          <button class="btn ghost" id="backToVideo">Back</button>
-          <button class="btn" id="restart">Start Over</button>
+          <button class="btn ghost" id="backToVideo" type="button">Back</button>
+          <button class="btn" id="startOver" type="button">Start Over</button>
         </div>
       </section>
     </main>
 
     <footer class="footer">
-      <span>Created By @lil_huddyy33 on Instagram</span>
+      Created By <a href="https://instagram.com/lil_huddyy33" target="_blank" rel="noopener">@lil_huddyy33</a> on Instagram
     </footer>
+
+    <!-- Part Picker Modal -->
+    <div class="modal hidden" id="pickerModal" aria-hidden="true">
+      <div class="modalCard">
+        <div class="modalHeader">
+          <div>
+            <div class="modalTitle" id="pickerTitle">Pick Part</div>
+            <div class="sub" id="pickerSub"></div>
+          </div>
+          <button class="iconBtn" id="closePicker" type="button">✕</button>
+        </div>
+
+        <div class="panel" style="margin-top:12px;">
+          <h2>Options</h2>
+          <div id="pickerOptions" class="list"></div>
+        </div>
+
+        <section class="panel" id="customPanel" style="margin-top:16px;">
+          <h2>Add a custom part</h2>
+          <p class="sub">Add your own part so it shows up as an option next time.</p>
+
+          <div class="formRow">
+            <input id="customTitle" placeholder='Title (ex: Quadmula Split 3")' />
+            <input id="customLink" placeholder="Link (https://...)" />
+            <input id="customPrice" placeholder="Price (ex: 79.99)" />
+          </div>
+
+          <div class="formRow">
+            <input id="customWeight" placeholder="Weight (g, ex: 106)" />
+          </div>
+
+          <div class="nav" style="justify-content:flex-start;">
+            <button class="btn" id="customAdd" type="button">Add Custom Part</button>
+            <button class="btn ghost" id="customCancel" type="button">Cancel</button>
+          </div>
+        </section>
+      </div>
+    </div>
+
+    <!-- Saved Drones Modal -->
+    <div class="modal hidden" id="savedModal" aria-hidden="true">
+      <div class="modalCard">
+        <div class="modalHeader">
+          <div>
+            <div class="modalTitle">Saved Drones</div>
+            <div class="sub">Load or delete a saved build.</div>
+          </div>
+          <button class="iconBtn" id="closeSaved" type="button">✕</button>
+        </div>
+
+        <div class="panel" style="margin-top:12px;">
+          <div id="savedList" class="list"></div>
+        </div>
+
+        <div class="nav">
+          <button class="btn ghost" id="closeSaved2" type="button">Close</button>
+        </div>
+      </div>
+    </div>
+
   </div>
 
   <script src="data.js"></script>
