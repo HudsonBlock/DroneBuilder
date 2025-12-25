@@ -40,10 +40,11 @@ a:hover{ text-decoration:underline; }
 }
 
 .brand{
-  font-weight:800;
+  font-weight:900;
   letter-spacing:.4px;
   line-height:1.05;
-  font-size:22px;
+  font-size:28px;
+  white-space: nowrap;
   opacity:.95;
 }
 
@@ -329,4 +330,50 @@ h1{
 .modalTitle{
   font-size:28px;
   font-weight:900;
+}
+
+/* Mobile layout fixes (keeps your existing style, only changes layout when narrow) */
+@media (max-width: 520px){
+  /* Keep the whole card confined on iPhone */
+  .app{ padding: 12px; }
+  .card{ padding: 14px; }
+
+  /* First page tiles: force 1 column so nothing spills */
+  .grid{ grid-template-columns: 1fr; }
+
+  /* Prevent weird "blue band/bleed" looking overflow on iOS */
+  .card, .panel{ overflow: hidden; }
+
+  /* Parts rows: switch to a 2-row grid so nothing overlaps */
+  .row{
+    grid-template-columns: 1fr auto;
+    grid-template-areas:
+      "label actions"
+      "picked picked";
+    align-items: center;
+  }
+
+  .row .partName{
+    grid-area: label;
+    min-width: 0; /* allows text to shrink properly */
+  }
+
+  /* Your middle content (picked name + weight) */
+  .row > div:nth-child(2){
+    grid-area: picked;
+    min-width: 0;
+  }
+
+  /* Right side: Choose + price stay together */
+  .row > div:nth-child(3){
+    grid-area: actions;
+    justify-self: end;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    white-space: nowrap;
+  }
+
+  /* Stop price from wrapping */
+  .price{ white-space: nowrap; }
 }
