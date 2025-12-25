@@ -377,3 +377,383 @@ h1{
   /* Stop price from wrapping */
   .price{ white-space: nowrap; }
 }
+
+/* ===== Base ===== */
+:root{
+  --bg1:#070a12;
+  --bg2:#0b1020;
+  --card:#0f1730;
+  --card2:#0c1328;
+  --stroke:rgba(120,160,255,.14);
+  --stroke2:rgba(120,160,255,.10);
+  --text:#eaf0ff;
+  --muted:rgba(234,240,255,.65);
+  --price:#6fffd0;
+}
+
+*{ box-sizing:border-box; }
+html,body{ height:100%; }
+body{
+  margin:0;
+  font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial;
+  color:var(--text);
+  background:
+    radial-gradient(1000px 700px at 30% 30%, #152150 0%, transparent 55%),
+    radial-gradient(900px 700px at 70% 40%, #0d1a44 0%, transparent 55%),
+    linear-gradient(180deg, var(--bg2), var(--bg1));
+}
+
+a{ color:#7db3ff; text-decoration:none; }
+a:hover{ text-decoration:underline; }
+
+.app{
+  max-width:1120px;
+  margin:0 auto;
+  padding:28px 18px 40px;
+}
+
+.topbar{
+  display:flex;
+  justify-content:space-between;
+  align-items:flex-start;
+  margin-bottom:14px;
+}
+
+.brand{
+  font-weight:900;
+  letter-spacing:.4px;
+  line-height:1.05;
+  font-size:28px;
+  white-space: nowrap;
+  opacity:.95;
+}
+
+.topInfo{
+  font-size:15px;
+  color:var(--muted);
+}
+
+.card{
+  padding:22px;
+  border-radius:26px;
+  background: linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,.02));
+  border:1px solid var(--stroke);
+  box-shadow: 0 20px 80px rgba(0,0,0,.35);
+}
+
+/* ===== Steps ===== */
+.step{ display:block; }
+.hidden{ display:none !important; }
+
+h1{
+  margin:0 0 6px;
+  font-size:48px;
+  letter-spacing:-.6px;
+}
+.sub{
+  margin:0 0 18px;
+  color:var(--muted);
+  font-size:20px;
+}
+
+.summary{
+  display:flex;
+  gap:10px;
+  flex-wrap:wrap;
+  margin:14px 0 18px;
+}
+.pill{
+  border:1px solid var(--stroke);
+  background:rgba(255,255,255,.03);
+  padding:8px 12px;
+  border-radius:999px;
+  color:var(--muted);
+  font-size:14px;
+}
+.pill strong{ color:var(--text); font-weight:700; }
+
+.grid{
+  display:grid;
+  grid-template-columns:repeat(4, 1fr);
+  gap:16px;
+}
+
+.choice{
+  border-radius:18px;
+  padding:18px 18px 16px;
+  border:1px solid var(--stroke);
+  background:rgba(255,255,255,.025);
+  cursor:pointer;
+  transition: transform .08s ease, border-color .08s ease;
+}
+.choice:hover{
+  transform: translateY(-1px);
+  border-color: rgba(140,180,255,.22);
+}
+.choiceTitle{
+  font-size:24px;
+  font-weight:800;
+  margin-bottom:6px;
+}
+.choiceSub{ color:var(--muted); }
+
+.panel{
+  border-radius:22px;
+  border:1px solid var(--stroke);
+  background: rgba(0,0,0,.12);
+  padding:16px;
+}
+
+.panel h2{
+  margin:0 0 12px;
+  font-size:22px;
+  font-weight:800;
+}
+
+.list{ display:flex; flex-direction:column; gap:12px; }
+
+/* Row layout used for build list + picker options */
+.row{
+  display:grid;
+  grid-template-columns: 160px 1fr 160px;
+  align-items:center;
+  gap:14px;
+  padding:14px;
+  border-radius:18px;
+  border:1px solid var(--stroke2);
+  background: rgba(255,255,255,.02);
+}
+
+.partName{
+  font-weight:800;
+  font-size:18px;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+
+.pickCol{
+  min-width:0;
+}
+
+.pickTitle{
+  font-weight:800;
+  font-size:18px;
+  line-height:1.1;
+}
+.pickMeta{
+  color:var(--muted);
+  margin-top:4px;
+  font-size:14px;
+}
+
+.rightCol{
+  display:flex;
+  align-items:center;
+  justify-content:flex-end;
+  gap:10px;
+  min-width:0;
+}
+
+.price{
+  color:var(--price);
+  font-weight:900;
+  font-size:22px;
+  white-space:nowrap;
+}
+
+.total{
+  color:var(--muted);
+  font-size:18px;
+}
+.total strong{ color:var(--text); font-weight:800; }
+
+/* Buttons */
+.btn{
+  border-radius:14px;
+  border:1px solid rgba(120,160,255,.25);
+  background: rgba(125,160,255,.14);
+  color:var(--text);
+  font-weight:800;
+  padding:10px 14px;
+  cursor:pointer;
+}
+.btn:hover{ border-color: rgba(150,190,255,.35); }
+
+.btn.ghost{
+  background: rgba(255,255,255,.03);
+}
+
+.smallBtn{
+  border-radius:999px;
+  padding:8px 12px;
+  border:1px solid rgba(120,160,255,.22);
+  background: rgba(255,255,255,.03);
+  color:var(--muted);
+  cursor:pointer;
+  font-weight:700;
+}
+.smallBtn:hover{ border-color: rgba(150,190,255,.35); color:var(--text); }
+
+.iconBtn{
+  border:1px solid rgba(120,160,255,.22);
+  background: rgba(255,255,255,.03);
+  color:var(--muted);
+  border-radius:12px;
+  padding:8px 10px;
+  cursor:pointer;
+}
+.iconBtn:hover{ color:var(--text); }
+
+.nav{
+  display:flex;
+  justify-content:space-between;
+  gap:10px;
+  margin-top:18px;
+}
+
+.footer{
+  color:var(--muted);
+  margin-top:18px;
+  font-size:16px;
+}
+
+/* ===== New: totals row + save button (inherits existing button styling) ===== */
+.totalsRow{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:14px;
+  padding-top:14px;
+  margin-top:12px;
+  border-top:1px solid var(--stroke2);
+}
+.totalsRight{
+  display:flex;
+  align-items:center;
+  justify-content:flex-end;
+  gap:12px;
+}
+.totalPrice{
+  color:var(--price);
+  font-weight:900;
+  font-size:34px;
+  line-height:1;
+  white-space:nowrap;
+}
+
+/* ===== New: bottom action on first page ===== */
+.bottomActions{
+  margin-top:16px;
+  display:flex;
+  justify-content:flex-start;
+}
+
+/* ===== Form ===== */
+.formRow{
+  display:grid;
+  grid-template-columns: 1fr 1fr 260px;
+  gap:10px;
+  margin-top:10px;
+}
+.formRow input{
+  width:100%;
+  padding:12px 14px;
+  border-radius:14px;
+  border:1px solid rgba(120,160,255,.18);
+  background: rgba(0,0,0,.22);
+  color:var(--text);
+  outline:none;
+}
+.formRow input::placeholder{ color: rgba(234,240,255,.35); }
+
+@media (max-width: 960px){
+  .grid{ grid-template-columns:repeat(2,1fr); }
+  h1{ font-size:40px; }
+  .row{ grid-template-columns: 140px 1fr 140px; }
+  .formRow{ grid-template-columns: 1fr; }
+}
+
+@media (max-width: 520px){
+  .row{ grid-template-columns: 120px 1fr 120px; }
+  .price{ font-size:20px; }
+  .totalPrice{ font-size:30px; }
+}
+
+/* ===== New: Modals (does not change your normal layout) ===== */
+.modal{
+  position:fixed;
+  inset:0;
+  background: rgba(0,0,0,.55);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:18px;
+  z-index:9999;
+}
+.modalCard{
+  width:min(980px, 100%);
+  max-height: 90vh;
+  overflow:auto;
+  border-radius:26px;
+  border:1px solid var(--stroke);
+  background: linear-gradient(180deg, rgba(15,23,48,.96), rgba(10,16,34,.96));
+  box-shadow: 0 40px 120px rgba(0,0,0,.55);
+  padding:18px;
+}
+.modalHeader{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:10px;
+}
+.modalTitle{
+  font-size:28px;
+  font-weight:900;
+}
+
+/* Mobile layout fixes (keeps your existing style, only changes layout when narrow) */
+@media (max-width: 520px){
+  /* Keep the whole card confined on iPhone */
+  .app{ padding: 12px; }
+  .card{ padding: 14px; }
+
+  /* First page tiles: force 1 column so nothing spills */
+  .grid{ grid-template-columns: 1fr; }
+
+  /* Prevent weird "blue band/bleed" looking overflow on iOS */
+  .card, .panel{ overflow: hidden; }
+
+  /* Parts rows: switch to a 2-row grid so nothing overlaps */
+  .row{
+    grid-template-columns: 1fr auto;
+    grid-template-areas:
+      "label actions"
+      "picked picked";
+    align-items: center;
+  }
+
+  .row .partName{
+    grid-area: label;
+    min-width: 0; /* allows text to shrink properly */
+  }
+
+  /* Your middle content (picked name + weight) */
+  .row > div:nth-child(2){
+    grid-area: picked;
+    min-width: 0;
+  }
+
+  /* Right side: Choose + price stay together */
+  .row > div:nth-child(3){
+    grid-area: actions;
+    justify-self: end;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    white-space: nowrap;
+  }
+
+  /* Stop price from wrapping */
+  .price{ white-space: nowrap; }
+}
