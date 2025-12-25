@@ -1,126 +1,98 @@
-// -------------------- Config --------------------
+/* Drone Builder (app.js)
+   - Single parts list (no Ideal/Budget split)
+   - Saved drones + reload persistence
+   - Custom parts stored locally
+*/
+
+const LS_STATE_KEY = "db_state_v1";
+const LS_CUSTOM_KEY = "db_custom_v1";
+const LS_SAVED_KEY = "db_saved_v1";
+
 const SIZES = [
-  { key: '5"', desc: 'Freestyle / Racing / Cinematic' },
-  { key: '7"', desc: 'Cinematic Long Range' },
-  { key: '3"', desc: 'Freestyle / Racing / Cinematic' },
-  { key: 'Tinywhoop (prebuilt)', desc: 'Prebuilt Freestyle / Racing' },
-  { key: 'Cinewhoop (prebuilt)', desc: 'Prebuilt Cinematic' },
+  { id: '5"', title: '5"', sub: "Freestyle / Racing / Cinematic" },
+  { id: '7"', title: '7"', sub: "Cinematic Long Range" },
+  { id: '3"', title: '3"', sub: "Freestyle / Racing / Cinematic" },
+  { id: 'Tinywhoop (prebuilt)', title: "Tinywhoop (prebuilt)", sub: "Prebuilt Freestyle / Racing" },
+  { id: 'Cinewhoop (prebuilt)', title: "Cinewhoop (prebuilt)", sub: "Prebuilt Cinematic" },
 ];
 
-const ALL_STYLES = ['Freestyle', 'Racing', 'Cinematic'];
-
-const VIDEO_SYSTEMS = [
-  { key: 'Analog', desc: 'Good for entry level and long range' },
-  { key: 'HDZero', desc: 'Best Low Latency HD' },
-  { key: 'DJI', desc: '4K Best Image Quality' },
-  { key: 'Other', desc: 'Walksnail, Etc.' },
-];
-
-function allowedStylesForSize(size) {
-  if (size === '7"') return ['Cinematic'];
-  if (size === 'Tinywhoop (prebuilt)') return ['Freestyle', 'Racing'];
-  if (size === 'Cinewhoop (prebuilt)') return ['Cinematic'];
-  return ALL_STYLES;
+function stylesForSize(size) {
+  if (!size) return [];
+  if (String(size).includes("Tinywhoop")) return ["Freestyle", "Racing"];
+  if (String(size).includes("Cinewhoop")) return ["Cinematic"];
+  if (size === '7"') return ["Cinematic", "Long Range"];
+  return ["Freestyle", "Racing", "Cinematic"];
 }
 
-// -------------------- State --------------------
+function videosFor(size, style) {
+  // Keep broad options unless you want to narrow later
+  return ["Analog", "DJI", "Walksnail", "HDZero"];
+}
+
 const state = {
+  step: "step-size",
   size: null,
   style: null,
   video: null,
-
-  // picks[part] = { name, price, link, weight }
-  picks: {},
-
-  // current part picking context
-  partPick: null, // { part: 'Frame' }
+  picks: {},      // { [partName]: { name, price, link, weight } }
+  activePart: null
 };
 
-// -------------------- Custom parts storage --------------------
-const CUSTOM_KEY = 'drone_builder_custom_parts_v2';
+// ---------- DOM helpers ----------
+const el = (id) => document.getElementById(id);
 
-function loadCustom() {
-  try {
-    return JSON.parse(localStorage.getItem(CUSTOM_KEY) || '[]');
-  } catch {
-    return [];
-  }
+function show(stepId) {
+  for (const s of document.querySelectorAll(".step")) s.classList.add("hidden");
+  el(stepId).classList.remove("hidden");
+  state.step = stepId;
+  renderTopInfo();
+  saveProgress();
 }
 
-function saveCustom(arr) {
-  localStorage.setItem(CUSTOM_KEY, JSON.stringify(arr));
-}
-
-function customMatches(c) {
-  return c.size === state.size && c.style === state.style && c.video === state.video;
-}
-
-function newId() {
-  return crypto?.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random().toString(16).slice(2);
-}
-
-function deleteCustomById(id) {
-  const arr = loadCustom();
-  saveCustom(arr.filter((x) => x.id !== id));
-}
-
-// -------------------- UI helpers --------------------
-function el(id) {
-  return document.getElementById(id);
+function renderTopInfo() {
+  const top = el("topInfo");
+  const bits = [];
+  if (state.size) bits.push(`Size: ${state.size}`);
+  if (state.style) bits.push(`Style: ${state.style}`);
+  if (state.video) bits.push(`Video: ${state.video}`);
+  top.textContent = bits.join(" • ");
 }
 
 function money(n) {
-  const num = Number(n);
-  // Hide $0.00 everywhere
-  if (!Number.isFinite(num) || num <= 0) return '';
-  return num.toLocaleString(undefined, { style: 'currency', currency: 'USD' });
+  const v = Number(n || 0);
+  return `$${v.toFixed(2)}`;
+}
+function grams(n) {
+  const v = Number(n);
+  if (!Number.isFinite(v)) return "";
+  // keep on one line
+  return `${v} g`;
 }
 
-function grams(g) {
-  const n = Number(g);
-  // Hide "0 g" / invalid
-  if (!Number.isFinite(n) || n <= 0) return '';
-  return `${n}g`;
+// ---------- Custom Parts storage ----------
+function loadCustom() {
+  try { return JSON.parse(localStorage.getItem(LS_CUSTOM_KEY) || "[]"); }
+  catch { return []; }
+}
+function saveCustom(list) {
+  localStorage.setItem(LS_CUSTOM_KEY, JSON.stringify(list || []));
+}
+function uuid() {
+  return Math.random().toString(16).slice(2) + Date.now().toString(16);
 }
 
-// crumbs (top right)
-function renderCrumbs() {
-  const parts = [];
-  if (state.size) parts.push(`Size: ${state.size}`);
-  if (state.style) parts.push(`Style: ${state.style}`);
-  if (state.video) parts.push(`Video: ${state.video}`);
-  const c = el('crumbs');
-  if (c) c.textContent = parts.join('  •  ');
+// Match custom parts against current selection (size/style/video)
+function customMatches(c) {
+  const sizeOk = c.size ? c.size === state.size : true;
+  const styleOk = c.style ? c.style === state.style : true;
+  const videoOk = c.video ? c.video === state.video : true;
+  return sizeOk && styleOk && videoOk;
 }
 
-// One single show() (no duplicates)
-function show(stepId) {
-  const steps = ['step-size', 'step-style', 'step-video', 'step-part', 'step-results'];
-  for (const id of steps) {
-    const node = el(id);
-    if (!node) continue;
-    node.classList.toggle('hidden', id !== stepId);
-  }
-  renderCrumbs();
-}
-
-function tile(title, desc, onClick) {
-  const div = document.createElement('div');
-  div.className = 'tile';
-  div.innerHTML = `<div class="title">${title}</div><div class="desc">${desc}</div>`;
-  div.addEventListener('click', onClick);
-  return div;
-}
-
-// -------------------- DB helpers --------------------
-// Supports either:
-//  A) { size:'5"', style:'Freestyle', video:'Analog', part:'Frame', options:[...] }
-//  B) { sizes:['5"'], styles:['Freestyle','Racing'], videos:['Analog','DJI'], part:'Frame', options:[...] }
-
+// ---------- DB helpers (supports both row formats) ----------
 function matchesOne(rule, selected) {
-  // rule can be: undefined, 'Any', string, or array
   if (rule == null) return false;
-  if (rule === 'Any') return true;
+  if (rule === "Any") return true;
   if (Array.isArray(rule)) return rule.includes(selected);
   return rule === selected;
 }
@@ -129,8 +101,11 @@ function rowMatchesState(row) {
   const sizesRule = row.sizes ?? row.size;
   const stylesRule = row.styles ?? row.style;
   const videosRule = row.videos ?? row.video;
-
-  return matchesOne(sizesRule, state.size) && matchesOne(stylesRule, state.style) && matchesOne(videosRule, state.video);
+  return (
+    matchesOne(sizesRule, state.size) &&
+    matchesOne(stylesRule, state.style) &&
+    matchesOne(videosRule, state.video)
+  );
 }
 
 function rowsForCurrentSelection() {
@@ -139,44 +114,44 @@ function rowsForCurrentSelection() {
 
 function uniquePartsForSelection() {
   const rows = rowsForCurrentSelection();
-  const set = new Set(rows.map((r) => r.part));
+  const set = new Set(rows.map(r => r.part));
   return Array.from(set);
 }
 
 // Merge DB + Custom for a part, cheapest first
 function buildPartOptionsCombined(part) {
-  const rows = rowsForCurrentSelection().filter((r) => r.part === part);
+  const rows = rowsForCurrentSelection().filter(r => r.part === part);
 
   const dbOptions = [];
   for (const row of rows) {
-    for (const opt of row.options || []) {
+    for (const opt of (row.options || [])) {
       dbOptions.push({
         id: null,
         name: opt.name,
         price: opt.price ?? 0,
-        link: opt.link ?? '',
+        link: opt.link ?? "",
         weight: opt.weight ?? null,
-        source: 'db',
+        source: "db",
       });
     }
   }
 
   const customOptions = loadCustom()
-    .filter((c) => customMatches(c) && c.part === part)
-    .map((c) => ({
+    .filter(c => customMatches(c) && c.part === part)
+    .map(c => ({
       id: c.id,
       name: c.name,
       price: c.price ?? 0,
-      link: c.link ?? '',
+      link: c.link ?? "",
       weight: c.weight ?? null,
-      source: 'custom',
+      source: "custom",
     }));
 
-  // custom first so it "wins" on duplicates by name
+  // custom first so it wins on duplicates by name
   const seen = new Set();
   const merged = [];
   for (const opt of [...customOptions, ...dbOptions]) {
-    const key = String(opt.name || '').trim().toLowerCase();
+    const key = String(opt.name || "").trim().toLowerCase();
     if (!key) continue;
     if (seen.has(key)) continue;
     seen.add(key);
@@ -187,97 +162,185 @@ function buildPartOptionsCombined(part) {
   return merged;
 }
 
-// -------------------- Results rendering --------------------
-function renderResults() {
-  // summary pills (if present)
-  const summary = el('summary');
-  if (summary) {
-    summary.innerHTML = `
-      <span class="pill"><strong>Size</strong>: ${state.size ?? ''}</span>
-      <span class="pill"><strong>Style</strong>: ${state.style ?? ''}</span>
-      <span class="pill"><strong>Video</strong>: ${state.video ?? ''}</span>
-    `;
-  }
+// ---------- Progress persistence ----------
+function saveProgress() {
+  const snapshot = {
+    step: state.step,
+    size: state.size,
+    style: state.style,
+    video: state.video,
+    picks: state.picks
+  };
+  localStorage.setItem(LS_STATE_KEY, JSON.stringify(snapshot));
+}
 
-  const container = el('idealList') || el('partsList');
-  if (!container) return;
-  container.innerHTML = '';
+function loadProgress() {
+  try {
+    const raw = localStorage.getItem(LS_STATE_KEY);
+    if (!raw) return false;
+    const s = JSON.parse(raw);
+    if (!s || typeof s !== "object") return false;
+
+    state.step = s.step || "step-size";
+    state.size = s.size ?? null;
+    state.style = s.style ?? null;
+    state.video = s.video ?? null;
+    state.picks = s.picks || {};
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function clearProgress() {
+  localStorage.removeItem(LS_STATE_KEY);
+}
+
+// ---------- UI builders ----------
+function makeChoiceCard({ title, sub, onClick }) {
+  const div = document.createElement("div");
+  div.className = "choice";
+  div.addEventListener("click", onClick);
+  div.innerHTML = `
+    <div class="choiceTitle">${title}</div>
+    <div class="choiceSub">${sub || ""}</div>
+  `;
+  return div;
+}
+
+function renderSizeStep() {
+  const grid = el("sizeGrid");
+  grid.innerHTML = "";
+  for (const s of SIZES) {
+    grid.appendChild(makeChoiceCard({
+      title: s.title,
+      sub: s.sub,
+      onClick: () => {
+        state.size = s.id;
+        state.style = null;
+        state.video = null;
+        state.picks = {};
+        renderStyleStep();
+        show("step-style");
+      }
+    }));
+  }
+}
+
+function renderStyleStep() {
+  const grid = el("styleGrid");
+  grid.innerHTML = "";
+  const styles = stylesForSize(state.size);
+  styles.forEach(st => {
+    grid.appendChild(makeChoiceCard({
+      title: st,
+      sub: "",
+      onClick: () => {
+        state.style = st;
+        state.video = null;
+        state.picks = {};
+        renderVideoStep();
+        show("step-video");
+      }
+    }));
+  });
+}
+
+function renderVideoStep() {
+  const grid = el("videoGrid");
+  grid.innerHTML = "";
+  const vids = videosFor(state.size, state.style);
+  vids.forEach(v => {
+    grid.appendChild(makeChoiceCard({
+      title: v,
+      sub: "",
+      onClick: () => {
+        state.video = v;
+        state.picks = {};
+        renderResults();
+        show("step-results");
+      }
+    }));
+  });
+}
+
+// ---------- Results list (ONE section) ----------
+function renderSummaryPills() {
+  const summary = el("summary");
+  summary.innerHTML = `
+    <span class="pill"><strong>Size</strong>: ${state.size || ""}</span>
+    <span class="pill"><strong>Style</strong>: ${state.style || ""}</span>
+    <span class="pill"><strong>Video</strong>: ${state.video || ""}</span>
+  `;
+}
+
+function renderResults() {
+  renderSummaryPills();
 
   const parts = uniquePartsForSelection();
-  if (parts.length === 0) {
-    container.innerHTML = `<div class="sub">No parts found for this combo yet.</div>`;
-    const totalEl = el('idealTotal') || el('total');
-    if (totalEl) totalEl.textContent = '';
-    return;
-  }
+  const list = el("partsList");
+  list.innerHTML = "";
 
   let totalPrice = 0;
+  let weightKnownCount = 0;
   let totalWeight = 0;
 
   for (const part of parts) {
     const opts = buildPartOptionsCombined(part);
-    if (opts.length === 0) continue;
+    if (!opts.length) continue;
 
-    // default pick = cheapest
+    // default pick = cheapest option
     if (!state.picks[part]) {
       const first = opts[0];
       state.picks[part] = {
         name: first.name,
-        price: first.price || 0,
-        link: first.link || '',
-        weight: first.weight ?? null,
+        price: first.price ?? 0,
+        link: first.link ?? "",
+        weight: first.weight ?? null
       };
     }
 
     const picked = state.picks[part];
+    totalPrice += Number(picked.price || 0);
 
-    totalPrice += Number(picked.price) || 0;
     const w = Number(picked.weight);
-    if (Number.isFinite(w) && w > 0) totalWeight += w;
-
-    // Row container (3-column grid on desktop, responsive in CSS)
-    const row = document.createElement('div');
-    row.className = 'row';
-
-    // Left column: category name (Frame, Motors, etc.)
-    const left = document.createElement('div');
-    left.className = 'partName';
-    left.textContent = part;
-
-    // Middle column: picked part name + weight under it
-    const mid = document.createElement('div');
-    mid.className = 'mid';
-
-    const nameLine = document.createElement(picked.link ? 'a' : 'div');
-    nameLine.className = picked.link ? 'pickedName optionLink' : 'pickedName';
-    nameLine.textContent = picked.name || '';
-
-    if (picked.link) {
-      nameLine.href = picked.link;
-      nameLine.target = '_blank';
-      nameLine.rel = 'noopener';
+    if (Number.isFinite(w) && w > 0) {
+      totalWeight += w;
+      weightKnownCount++;
     }
 
-    const meta = document.createElement('div');
-    meta.className = 'optionMeta';
-    meta.textContent = grams(w); // grams() returns '' unless valid
+    const row = document.createElement("div");
+    row.className = "row";
 
-    mid.appendChild(nameLine);
-    mid.appendChild(meta);
+    const left = document.createElement("div");
+    left.className = "partName";
+    left.textContent = part;
 
-    // Right column: Choose button + price (kept together)
-    const right = document.createElement('div');
-    right.className = 'right';
+    const mid = document.createElement("div");
+    mid.className = "pickCol";
 
-    const chooseBtn = document.createElement('button');
-    chooseBtn.className = 'smallBtn';
-    chooseBtn.type = 'button';
-    chooseBtn.textContent = 'Choose';
-    chooseBtn.addEventListener('click', () => openPartPicker(part));
+    const pickTitle = picked.link
+      ? `<a class="pickTitle" href="${picked.link}" target="_blank" rel="noopener">${picked.name}</a>`
+      : `<div class="pickTitle">${picked.name || "Choose a Part:"}</div>`;
 
-    const priceDiv = document.createElement('div');
-    priceDiv.className = 'price';
-    priceDiv.textContent = money(picked.price || 0); // money() returns '' unless > 0
+    const pickMeta = (Number.isFinite(w) && w > 0) ? grams(w) : "";
+    mid.innerHTML = `
+      ${pickTitle}
+      <div class="pickMeta">${pickMeta}</div>
+    `;
+
+    const right = document.createElement("div");
+    right.className = "rightCol";
+
+    const chooseBtn = document.createElement("button");
+    chooseBtn.className = "smallBtn";
+    chooseBtn.type = "button";
+    chooseBtn.textContent = "Choose";
+    chooseBtn.addEventListener("click", () => openPartPicker(part));
+
+    const priceDiv = document.createElement("div");
+    priceDiv.className = "price";
+    priceDiv.textContent = Number(picked.price || 0) > 0 ? money(picked.price) : "";
 
     right.appendChild(chooseBtn);
     right.appendChild(priceDiv);
@@ -286,307 +349,311 @@ function renderResults() {
     row.appendChild(mid);
     row.appendChild(right);
 
-    container.appendChild(row);
+    list.appendChild(row);
   }
 
-  // Totals row
-  const totals = document.createElement('div');
-  totals.className = 'totalsRow';
-  totals.innerHTML = `
-    <div class="totalsLeft">
-      <span class="totalsLabel">Total weight:</span>
-      <span class="totalsValue">${totalWeight > 0 ? grams(totalWeight) : 'Unknown'}</span>
-    </div>
-    <div class="totalPrice">${money(totalPrice)}</div>
-  `;
-  container.appendChild(totals);
+  // totals
+  el("totalPrice").textContent = totalPrice > 0 ? money(totalPrice) : "";
+  el("totalWeight").textContent = (weightKnownCount > 0) ? grams(totalWeight) : "Unknown";
+
+  saveProgress();
 }
 
-// -------------------- Part Picker page --------------------
+// ---------- Part picker modal ----------
 function openPartPicker(part) {
-  state.partPick = { part };
+  state.activePart = part;
 
-  const title = el('partTitle');
-  if (title) title.textContent = `Pick ${part}`;
-
-  const sub = el('partSub');
-  if (sub) sub.textContent = `Size: ${state.size} • Style: ${state.style} • Video: ${state.video}`;
-
-  // Reset inputs
-  const cn = el('customName');
-  const cl = el('customLink');
-  const cp = el('customPrice');
-  const cw = el('customWeight');
-  if (cn) cn.value = '';
-  if (cl) cl.value = '';
-  if (cp) cp.value = '';
-  if (cw) cw.value = '';
-
-  renderPartPickerOptions();
-  show('step-part');
-}
-
-function renderPartPickerOptions() {
-  const wrap = el('partOptions');
-  if (!wrap) return;
-
-  wrap.innerHTML = '';
-
-  const part = state.partPick?.part;
-  if (!part) return;
+  el("pickerTitle").textContent = `Pick ${part}`;
+  el("pickerSub").textContent = `Size: ${state.size} • Style: ${state.style} • Video: ${state.video}`;
 
   const opts = buildPartOptionsCombined(part);
+  const wrap = el("pickerOptions");
+  wrap.innerHTML = "";
 
-  if (opts.length === 0) {
+  if (!opts.length) {
     wrap.innerHTML = `<div class="sub">No options found yet. Add entries in <b>data.js</b> or add a custom part below.</div>`;
+  } else {
+    for (const opt of opts) {
+      const card = document.createElement("div");
+      card.className = "row";
+
+      const left = document.createElement("div");
+      left.className = "pickCol";
+      left.innerHTML = opt.link
+        ? `<a class="pickTitle" href="${opt.link}" target="_blank" rel="noopener">${opt.name}</a>`
+        : `<div class="pickTitle">${opt.name}</div>`;
+
+      const meta = document.createElement("div");
+      meta.className = "pickMeta";
+      meta.textContent = (Number(opt.weight) > 0) ? grams(Number(opt.weight)) : "";
+
+      const leftWrap = document.createElement("div");
+      leftWrap.className = "pickCol";
+      leftWrap.appendChild(left);
+      leftWrap.appendChild(meta);
+
+      const blank = document.createElement("div");
+      blank.className = "pickCol";
+      blank.textContent = "";
+
+      const right = document.createElement("div");
+      right.className = "rightCol";
+
+      const pickBtn = document.createElement("button");
+      pickBtn.className = "smallBtn";
+      pickBtn.type = "button";
+      pickBtn.textContent = "Select";
+      pickBtn.addEventListener("click", () => {
+        state.picks[part] = {
+          name: opt.name,
+          price: opt.price ?? 0,
+          link: opt.link ?? "",
+          weight: opt.weight ?? null
+        };
+        closePartPicker();
+        renderResults();
+      });
+
+      const price = document.createElement("div");
+      price.className = "price";
+      price.textContent = Number(opt.price || 0) > 0 ? money(opt.price) : "";
+
+      right.appendChild(pickBtn);
+      right.appendChild(price);
+
+      card.appendChild(document.createElement("div")); // placeholder for alignment
+      card.appendChild(leftWrap);
+      card.appendChild(right);
+
+      wrap.appendChild(card);
+    }
+  }
+
+  // clear custom inputs
+  el("customTitle").value = "";
+  el("customLink").value = "";
+  el("customPrice").value = "";
+  el("customWeight").value = "";
+
+  el("pickerModal").classList.remove("hidden");
+  el("pickerModal").setAttribute("aria-hidden", "false");
+}
+
+function closePartPicker() {
+  el("pickerModal").classList.add("hidden");
+  el("pickerModal").setAttribute("aria-hidden", "true");
+  state.activePart = null;
+}
+
+function addCustomPart() {
+  const part = state.activePart;
+  if (!part) return;
+
+  const name = el("customTitle").value.trim();
+  const link = el("customLink").value.trim();
+  const price = Number(el("customPrice").value);
+  const weight = Number(el("customWeight").value);
+
+  if (!name) {
+    alert("Please enter a title for the custom part.");
     return;
   }
 
-  for (const opt of opts) {
-    const card = document.createElement('div');
-    card.className = 'optionCard';
+  const custom = loadCustom();
+  custom.unshift({
+    id: uuid(),
+    part,
+    name,
+    link: link || "",
+    price: Number.isFinite(price) ? price : 0,
+    weight: Number.isFinite(weight) ? weight : null,
 
-    const nameEl = opt.link
-      ? `<a class="optionLink" data-open="1" href="${opt.link}" target="_blank" rel="noopener">${opt.name}</a>`
-      : `<div style="font-weight:800">${opt.name}</div>`;
+    // lock custom item to current combo so it doesn't appear everywhere
+    size: state.size,
+    style: state.style,
+    video: state.video
+  });
 
-    const weightLine = grams(opt.weight);
+  saveCustom(custom);
 
-    card.innerHTML = `
-      <div class="optLeft">
-        ${nameEl}
-        <div class="optionMeta">${weightLine}</div>
-      </div>
-      <div class="optRight">
-        ${opt.source === 'custom' ? `<button class="miniDanger" data-del="1" type="button">Delete</button>` : ''}
-        <div class="price">${money(opt.price || 0)}</div>
-      </div>
-    `;
+  // re-open picker list
+  openPartPicker(part);
+}
 
-    card.addEventListener('click', (e) => {
-      // If they clicked the link, do NOT auto-select
-      if (e.target && e.target.matches('a[data-open="1"]')) return;
+// ---------- Saved drones ----------
+function loadSavedDrones() {
+  try { return JSON.parse(localStorage.getItem(LS_SAVED_KEY) || "[]"); }
+  catch { return []; }
+}
+function saveSavedDrones(list) {
+  localStorage.setItem(LS_SAVED_KEY, JSON.stringify(list || []));
+}
 
-      // Delete custom option
-      if (e.target && e.target.matches('button[data-del="1"]')) {
-        e.preventDefault();
-        e.stopPropagation();
+function openSavedModal() {
+  renderSavedModal();
+  el("savedModal").classList.remove("hidden");
+  el("savedModal").setAttribute("aria-hidden", "false");
+}
+function closeSavedModal() {
+  el("savedModal").classList.add("hidden");
+  el("savedModal").setAttribute("aria-hidden", "true");
+}
 
-        if (confirm(`Delete custom part "${opt.name}"?`)) {
-          deleteCustomById(opt.id);
+function renderSavedModal() {
+  const wrap = el("savedList");
+  wrap.innerHTML = "";
 
-          const current = state.picks[part];
-          if (current && current.name === opt.name && (current.link || '') === (opt.link || '')) {
-            delete state.picks[part];
-          }
+  const saved = loadSavedDrones();
+  if (!saved.length) {
+    wrap.innerHTML = `<div class="sub">No saved drones yet.</div>`;
+    return;
+  }
 
-          renderPartPickerOptions();
-          renderResults();
-        }
-        return;
-      }
+  saved.forEach(item => {
+    const row = document.createElement("div");
+    row.className = "row";
 
-      // Select option
-      state.picks[part] = {
-        name: opt.name,
-        price: opt.price || 0,
-        link: opt.link || '',
-        weight: opt.weight ?? null,
-      };
+    const left = document.createElement("div");
+    left.className = "partName";
+    left.textContent = item.name || "Saved Drone";
 
+    const mid = document.createElement("div");
+    mid.className = "pickCol";
+    const meta = [];
+    if (item.state?.size) meta.push(`Size: ${item.state.size}`);
+    if (item.state?.style) meta.push(`Style: ${item.state.style}`);
+    if (item.state?.video) meta.push(`Video: ${item.state.video}`);
+    mid.innerHTML = `<div class="pickMeta">${meta.join(" • ")}</div>`;
+
+    const right = document.createElement("div");
+    right.className = "rightCol";
+
+    const loadBtn = document.createElement("button");
+    loadBtn.className = "smallBtn";
+    loadBtn.type = "button";
+    loadBtn.textContent = "Load";
+    loadBtn.addEventListener("click", () => {
+      if (!item.state) return;
+      state.size = item.state.size ?? null;
+      state.style = item.state.style ?? null;
+      state.video = item.state.video ?? null;
+      state.picks = item.state.picks || {};
+      renderStyleStep();
+      renderVideoStep();
       renderResults();
-      show('step-results');
+      show(item.state.step || "step-results");
+      closeSavedModal();
     });
 
-    wrap.appendChild(card);
-  }
-}
+    const delBtn = document.createElement("button");
+    delBtn.className = "smallBtn";
+    delBtn.type = "button";
+    delBtn.textContent = "Delete";
+    delBtn.addEventListener("click", () => {
+      if (!confirm("Delete this saved drone?")) return;
+      const next = loadSavedDrones().filter(x => x.id !== item.id);
+      saveSavedDrones(next);
+      renderSavedModal();
+    });
 
-// -------------------- Step renderers --------------------
-function renderSizeStep() {
-  const grid = el('sizeGrid');
-  if (!grid) return;
+    right.appendChild(loadBtn);
+    right.appendChild(delBtn);
 
-  grid.innerHTML = '';
-  for (const s of SIZES) {
-    grid.appendChild(
-      tile(s.key, s.desc, () => {
-        state.size = s.key;
-        state.style = null;
-        state.video = null;
-        state.picks = {};
-        state.partPick = null;
+    row.appendChild(left);
+    row.appendChild(mid);
+    row.appendChild(right);
 
-        const allowed = allowedStylesForSize(state.size);
-
-        if (allowed.length === 1) {
-          state.style = allowed[0];
-          renderVideoStep();
-          show('step-video');
-        } else {
-          renderStyleStep();
-          show('step-style');
-        }
-      })
-    );
-  }
-}
-
-function renderStyleStep() {
-  const grid = el('styleGrid');
-  if (!grid) return;
-
-  grid.innerHTML = '';
-  const allowed = allowedStylesForSize(state.size);
-
-  for (const st of allowed) {
-    const desc =
-      st === 'Freestyle'
-        ? 'General ripping / tricks'
-        : st === 'Racing'
-        ? 'Fast & light'
-        : 'Smooth footage / stability';
-
-    grid.appendChild(
-      tile(st, desc, () => {
-        state.style = st;
-        state.video = null;
-        state.picks = {};
-        state.partPick = null;
-
-        renderVideoStep();
-        show('step-video');
-      })
-    );
-  }
-}
-
-function renderVideoStep() {
-  const grid = el('videoGrid');
-  if (!grid) return;
-
-  grid.innerHTML = '';
-  for (const v of VIDEO_SYSTEMS) {
-    grid.appendChild(
-      tile(v.key, v.desc, () => {
-        state.video = v.key;
-        state.picks = {};
-        state.partPick = null;
-
-        renderResults();
-        show('step-results');
-      })
-    );
-  }
-}
-
-// -------------------- Buttons --------------------
-const backToSize = el('backToSize');
-if (backToSize) {
-  backToSize.addEventListener('click', () => {
-    state.size = null;
-    state.style = null;
-    state.video = null;
-    state.picks = {};
-    state.partPick = null;
-    show('step-size');
+    wrap.appendChild(row);
   });
 }
 
-const backToStyle = el('backToStyle');
-if (backToStyle) {
-  backToStyle.addEventListener('click', () => {
-    state.video = null;
-    state.picks = {};
-    state.partPick = null;
+function saveCurrentDroneSnapshot() {
+  if (!state.size || !state.style || !state.video) {
+    alert("Finish choosing Size / Style / Video before saving.");
+    return;
+  }
 
-    const allowed = allowedStylesForSize(state.size);
-    if (allowed.length === 1) {
-      state.size = null;
-      state.style = null;
-      show('step-size');
-    } else {
-      show('step-style');
-    }
-  });
-}
+  const name = prompt("Name this drone build:", `${state.size} ${state.style} ${state.video}`) || "";
+  if (!name.trim()) return;
 
-const backToVideo = el('backToVideo');
-if (backToVideo) {
-  backToVideo.addEventListener('click', () => {
-    state.video = null;
-    state.picks = {};
-    state.partPick = null;
-    show('step-video');
-  });
-}
-
-const restart = el('restart');
-if (restart) {
-  restart.addEventListener('click', () => {
-    state.size = null;
-    state.style = null;
-    state.video = null;
-    state.picks = {};
-    state.partPick = null;
-    show('step-size');
-  });
-}
-
-// Part Picker buttons
-const cancelPartPick = el('cancelPartPick');
-if (cancelPartPick) {
-  cancelPartPick.addEventListener('click', () => show('step-results'));
-}
-
-const addCustom = el('addCustom');
-if (addCustom) {
-  addCustom.addEventListener('click', () => {
-    const part = state.partPick?.part;
-    if (!part) return;
-
-    const name = (el('customName')?.value || '').trim();
-    const link = (el('customLink')?.value || '').trim();
-    const priceRaw = (el('customPrice')?.value || '').trim();
-    const weightRaw = (el('customWeight')?.value || '').trim();
-
-    const price = Number(priceRaw);
-    const weight = weightRaw === '' ? null : Number(weightRaw);
-
-    if (!name || !Number.isFinite(price)) {
-      alert('Please enter a Title and a valid Price (number).');
-      return;
-    }
-    if (link && !/^https?:\/\//i.test(link)) {
-      alert('Link must start with http:// or https://');
-      return;
-    }
-    if (weightRaw !== '' && !Number.isFinite(weight)) {
-      alert('Weight must be a number (grams) or left blank.');
-      return;
-    }
-
-    const custom = loadCustom();
-    custom.unshift({
-      id: newId(),
+  const saved = loadSavedDrones();
+  saved.unshift({
+    id: uuid(),
+    name: name.trim(),
+    createdAt: Date.now(),
+    state: {
+      step: "step-results",
       size: state.size,
       style: state.style,
       video: state.video,
-      part,
-      name,
-      link,
-      price,
-      weight,
-    });
-    saveCustom(custom);
-
-    // auto-select the new custom part
-    state.picks[part] = { name, link, price, weight };
-    renderResults();
-    show('step-results');
+      picks: state.picks
+    }
   });
+  saveSavedDrones(saved);
+  alert("Saved!");
 }
 
-// -------------------- Boot --------------------
-renderSizeStep();
-show('step-size');
+// ---------- Wire up events ----------
+function bindEvents() {
+  // Back buttons
+  el("backToSize").addEventListener("click", () => show("step-size"));
+  el("backToStyle").addEventListener("click", () => show("step-style"));
+  el("backToVideo").addEventListener("click", () => show("step-video"));
+
+  // Start over
+  el("startOver").addEventListener("click", () => {
+    if (!confirm("Start over? This clears your current progress (saved drones stay).")) return;
+    state.size = null;
+    state.style = null;
+    state.video = null;
+    state.picks = {};
+    clearProgress();
+    renderSizeStep();
+    show("step-size");
+  });
+
+  // Picker modal controls
+  el("closePicker").addEventListener("click", closePartPicker);
+  el("customCancel").addEventListener("click", closePartPicker);
+  el("customAdd").addEventListener("click", addCustomPart);
+
+  // Clicking backdrop closes picker modal
+  el("pickerModal").addEventListener("click", (e) => {
+    if (e.target === el("pickerModal")) closePartPicker();
+  });
+
+  // Saved drones buttons
+  el("openSavedBtn").addEventListener("click", openSavedModal);
+  el("closeSaved").addEventListener("click", closeSavedModal);
+  el("closeSaved2").addEventListener("click", closeSavedModal);
+  el("savedModal").addEventListener("click", (e) => {
+    if (e.target === el("savedModal")) closeSavedModal();
+  });
+
+  // Save drone button on build page
+  el("saveDroneBtn").addEventListener("click", saveCurrentDroneSnapshot);
+}
+
+// ---------- Init ----------
+function init() {
+  renderSizeStep();
+
+  // Restore progress if present
+  const had = loadProgress();
+
+  // Build intermediate grids so back navigation doesn't show blank
+  renderStyleStep();
+  renderVideoStep();
+
+  if (had) {
+    if (state.step === "step-results") renderResults();
+    show(state.step || "step-size");
+  } else {
+    show("step-size");
+  }
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  bindEvents();
+  init();
+});
