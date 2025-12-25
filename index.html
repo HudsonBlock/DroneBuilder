@@ -17,7 +17,7 @@
       <!-- STEP 1 -->
       <section class="step" id="step-size">
         <h1>Choose your drone size</h1>
-        <p class="sub">Choose the size you want to build (you can always change this later)</p>
+        <p class="sub">Choose the platform you want to build (you can always change this later)</p>
         <div class="grid" id="sizeGrid"></div>
       </section>
 
@@ -34,7 +34,7 @@
       <!-- STEP 3 -->
       <section class="step hidden" id="step-video">
         <h1>Video system</h1>
-        <p class="sub">Pick the video transmission you prefer</p>
+        <p class="sub">Pick the FPV system you want to build around</p>
         <div class="grid" id="videoGrid"></div>
         <div class="nav">
           <button class="btn ghost" id="backToStyle">Back</button>
@@ -53,10 +53,12 @@
 
         <div class="panel" style="margin-top:14px;">
           <h2>Add a custom part</h2>
+          <p class="sub" style="margin-top:-6px;">Add your own part so it shows up as an option next time.</p>
           <div class="formGrid">
             <input class="input" id="customName" placeholder='Title (ex: Quadmula Split 3")' />
             <input class="input" id="customLink" placeholder="Link (https://...)" />
             <input class="input" id="customPrice" placeholder="Price (ex: 79.99)" />
+            <input class="input" id="customWeight" type="number" step="0.1" placeholder="Weight (g, ex: 106)" />
           </div>
           <div class="nav">
             <button class="btn" id="addCustom">Add Custom Part</button>
@@ -68,23 +70,17 @@
       <!-- STEP 4 -->
       <section class="step hidden" id="step-results">
         <h1>Your build</h1>
-        <p class="sub">Ideal + Budget suggestions. Pick options you like.</p>
+        <p class="sub">Pick parts you like</p>
 
         <div class="summary" id="summary"></div>
 
-        <div class="twoCol">
-          <section class="panel">
-            <h2>Ideal parts</h2>
-            <div id="idealList" class="list"></div>
-            <div class="total" id="idealTotal"></div>
-          </section>
+        <!-- Single parts list (we keep the same IDs app.js already uses) -->
+        <section class="panel">
+          <h2>Parts</h2>
+          <div id="idealList" class="list"></div>
+          
 
-          <section class="panel">
-            <h2>Budget parts</h2>
-            <div id="budgetList" class="list"></div>
-            <div class="total" id="budgetTotal"></div>
-          </section>
-        </div>
+        </section>
 
         <div class="nav">
           <button class="btn ghost" id="backToVideo">Back</button>
